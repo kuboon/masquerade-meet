@@ -1,0 +1,12 @@
+# Copy this file to .dev.vars and fill in the values from your Cloudflare
+# Realtime application: https://dash.cloudflare.com/?to=/:account/realtime
+#
+# .dev.vars is gitignored. It drives `npm run dev` locally, and
+# `npm run deploy:secrets` uploads the same values to the deployed Worker.
+
+CALLS_APP_ID=
+CALLS_APP_SECRET=
+
+# Optional — enables "invite AI" via the OpenAI Realtime API
+# OPENAI_API_TOKEN=
+# OPENAI_MODEL_ENDPOINT=

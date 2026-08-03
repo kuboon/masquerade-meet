@@ -39,21 +39,24 @@ Durable Object は解除時刻 `revealAt` を自分の時計で決め、同じ�
 
 `app/utils/characters.ts` にキャラクターの見た目と声のパラメーターが並んでいて、`app/components/CharacterAvatar.tsx` がそれをパラメトリックな SVG として描画します。画像ファイルを 15 個持たずに済み、タイル表示でも全画面でも輪郭が崩れません。
 
-## 開発
+## セットアップ
+
+[Cloudflare Realtime のダッシュボード](https://dash.cloudflare.com/?to=/:account/realtime)でアプリケーションを 1 つ作り、App ID と Secret を控えます。
 
 ```sh
 npm install
+cp .dev.vars.example .dev.vars   # 控えた 2 つの値を書き込む
+```
+
+`.dev.vars` はローカル開発とデプロイの両方で使う唯一の設定ファイルです（gitignore 済み）。
+
+## 開発
+
+```sh
 npm run dev
 ```
 
 [http://127.0.0.1:8787](http://127.0.0.1:8787) を開けば動きます。
-
-Cloudflare Realtime のダッシュボードでアプリケーションを作成し、`.dev.vars` に以下を書いてください。
-
-```
-CALLS_APP_ID=<APP_ID_GOES_HERE>
-CALLS_APP_SECRET=<SECRET_GOES_HERE>
-```
 
 チェック一式:
 
@@ -63,27 +66,30 @@ npm run check   # lint + typecheck + test
 
 ## デプロイ
 
-1. `wrangler` にログインします。
-
 ```sh
-wrangler login
+npx wrangler login       # 初回だけ
+npm run deploy           # ビルドしてデプロイ
+npm run deploy:secrets   # 初回だけ。.dev.vars の値をシークレットとして投入
 ```
 
-2. `wrangler.toml` の `CALLS_APP_ID` を自分の Calls App ID に変更します。
+以降の更新は `npm run deploy` だけです。シークレットはデプロイでは消えないので、値を変えたときだけ `npm run deploy:secrets` を叩き直してください。
 
-3. シークレットを設定します。
+順番には理由があります。`wrangler secret bulk` は既存の Worker に対して実行するものなので、先に一度デプロイして Worker を作る必要があります。`.dev.vars` に書いた値はすべてシークレットとして送られるので、`OPENAI_API_TOKEN` などを足した場合もそのまま反映されます。
 
-```sh
-echo REPLACE_WITH_YOUR_SECRET | wrangler secret put CALLS_APP_SECRET
-```
-
-4. 任意で [Cloudflare の TURN サービス](https://developers.cloudflare.com/calls/turn/)（`TURN_SERVICE_ID` / `TURN_SERVICE_TOKEN`）も設定できます。
-
-5. デプロイします。
+デプロイ先を確認するには:
 
 ```sh
-npm run deploy
+npx wrangler deploy --dry-run   # 何も送らずにビルド内容だけ確認
+npx wrangler tail               # 本番のログを流す
 ```
+
+任意で [Cloudflare の TURN サービス](https://developers.cloudflare.com/calls/turn/)を使う場合は、`TURN_SERVICE_ID` と `TURN_SERVICE_TOKEN` を `.dev.vars` に足してから `npm run deploy:secrets` を実行してください。
+
+### ワンクリックで試す
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/kuboon/masquerade-meet)
+
+このボタンは自分の GitHub アカウントにリポジトリを複製し、[Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) で CI/CD（push ごとの自動デプロイと PR プレビュー URL）まで設定します。ただし Realtime の認証情報は自動では入らないので、デプロイ後に Worker の設定画面か `npm run deploy:secrets` で `CALLS_APP_ID` と `CALLS_APP_SECRET` を追加してください。
 
 ## 既知の制限
 
