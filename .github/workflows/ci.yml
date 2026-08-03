@@ -1,8 +1,10 @@
 name: CI
 
+# Branch pushes are covered by the pull_request trigger. Listening to both
+# would run every job twice on any branch that has a PR open.
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
