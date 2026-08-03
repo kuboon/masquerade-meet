@@ -41,6 +41,8 @@ Durable Object は解除時刻 `revealAt` を自分の時計で決め、同じ�
 
 ## セットアップ
 
+Node.js 22 以上が必要です（Wrangler v4 の要件）。
+
 [Cloudflare Realtime のダッシュボード](https://dash.cloudflare.com/?to=/:account/realtime)でアプリケーションを 1 つ作り、App ID と Secret を控えます。
 
 ```sh
@@ -87,12 +89,13 @@ npx wrangler tail               # 本番のログを流す
 
 ### GitHub Actions で自動デプロイする
 
-`main` に push すると自動でデプロイされるようにしてあります（`.github/workflows/ci.yml`）。リポジトリの **Settings → Secrets and variables → Actions** に次の 2 つを登録すれば有効になります。
+`main` に push すると自動でデプロイされるようにしてあります（`.github/workflows/ci.yml`）。リポジトリの **Settings → Secrets and variables → Actions** に次の 1 つを登録すれば有効になります。
 
-| Secret                  | 取得先                                                                                                                     |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | [API トークン](https://dash.cloudflare.com/profile/api-tokens)。**Edit Cloudflare Workers** テンプレートでそのまま作れます |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare ダッシュボードの右サイドバー、または `npx wrangler whoami`                                                      |
+| Secret                 | 取得先                                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN` | [API トークン](https://dash.cloudflare.com/profile/api-tokens)。**Edit Cloudflare Workers** テンプレートでそのまま作れます |
+
+デプロイ先のアカウント ID（`CLOUDFLARE_ACCOUNT_ID`）はワークフローに直書きしてあります。アカウント ID は宛先を指すだけで単体では何の権限も持たないため、秘密にする必要はありません。フォークして自分のアカウントへデプロイする場合は、`.github/workflows/` の 2 つのファイルにある値を `npx wrangler whoami` で確認した自分の ID に差し替えてください。
 
 Realtime の認証情報は Worker のシークレットとして一度入れれば十分なので、毎回のデプロイでは触りません。GitHub 側から入れ直したいときは `CALLS_APP_ID` と `CALLS_APP_SECRET` も Actions secrets に登録したうえで、**Actions → Sync Worker secrets → Run workflow** を手動で実行してください（`.github/workflows/sync-secrets.yml`）。ローカルから `npm run deploy:secrets` を叩くのと同じことをします。
 
