@@ -7,10 +7,13 @@ compatibility_flags = ["nodejs_compat"]
 [site]
   bucket = "./public"
 
-[vars]
-CALLS_APP_ID = "YOUR_CALLS_SFU_APP_ID_HERE"
+# CALLS_APP_ID and CALLS_APP_SECRET are deliberately NOT declared here.
+# Both come from your Cloudflare Realtime application, both are per-account,
+# and a placeholder in [vars] would silently overwrite the real value on every
+# `wrangler deploy`. Put them in .dev.vars and run `npm run deploy:secrets`.
 
 # Optional vars
+# [vars]
 # OPENAI_MODEL_ENDPOINT = ""
 
 [[durable_objects.bindings]]
@@ -22,9 +25,11 @@ class_name = "ChatRoom"
 tag = "v1" # Should be unique for each entry
 new_classes = ["ChatRoom"]
 
-# The necessary secrets are:
+# Required secrets (see .dev.vars.example):
+# - CALLS_APP_ID
 # - CALLS_APP_SECRET
-# To add secret, run `echo <VALUE> | wrangler secret put <NAME>`
+# Run `npm run deploy:secrets` to upload everything in .dev.vars at once, or
+# set them one at a time with `wrangler secret put <NAME>`.
 
 # Optional secrets:
-# OPENAI_API_TOKEN = ""
+# - OPENAI_API_TOKEN

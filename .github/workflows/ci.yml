@@ -1,0 +1,77 @@
+name: CI
+
+# Branch pushes are covered by the pull_request trigger. Listening to both
+# would run every job twice on any branch that has a PR open.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  e2e:
+    name: Voice changer (real browser)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      # Only the voice-changer spec runs here. joining-room.spec.ts drives a
+      # real meeting, which needs Cloudflare Realtime credentials we do not
+      # want in CI; the DSP spec is self-contained in an OfflineAudioContext.
+      - run: npx playwright test voice-changer
+        env:
+          # serve the built worker instead of the Remix watch-mode dev server
+          PLAYWRIGHT_WEB_SERVER_COMMAND: npm start
+          WRANGLER_SEND_METRICS: 'false'
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Cloudflare
+    # Deliberately gated on `check` only. A flaky browser launch should not be
+    # able to block a deploy; correctness of the app is what `check` covers.
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Runs the same `npm run deploy` you would run locally, using the
+      # wrangler version pinned in package.json rather than whatever a
+      # third-party action would install. Wrangler picks the credentials up
+      # from the environment.
+      - run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'

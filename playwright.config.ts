@@ -85,7 +85,9 @@ export default defineConfig({
 
 	/* Run your local dev server before starting the tests */
 	webServer: {
-		command: 'npm run dev',
+		// CI builds first and serves the built worker (`npm start`) instead of
+		// the Remix watch-mode dev server, which has nothing to watch there.
+		command: process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ?? 'npm run dev',
 		url: 'http://localhost:8787',
 		reuseExistingServer: !process.env.CI,
 	},
