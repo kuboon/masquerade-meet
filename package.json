@@ -70,8 +70,7 @@
 		"zod": "^3.23.8"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.4.19",
-		"@cloudflare/workers-types": "^4.20240806.0",
+		"@cloudflare/workers-types": "^5.20260801.1",
 		"@peculiar/webcrypto": "^1.5.0",
 		"@playwright/test": "^1.46.1",
 		"@remix-run/dev": "2.11.1",
@@ -90,17 +89,27 @@
 		"tailwindcss": "^3.4.9",
 		"typescript": "^5.5.4",
 		"vitest": "1.5.0",
-		"wrangler": "^3.78.12"
+		"wrangler": "^4.118.0"
 	},
 	"overrides": {
 		"msw": {
 			"typescript": "$typescript"
 		},
 		"pretty-format": "29.7.0",
-		"esbuild": "^0.23.0"
+		"@remix-run/dev": {
+			"esbuild": "^0.23.0",
+			"wrangler": {
+				".": "^4.118.0",
+				"esbuild": "^0.28.1"
+			}
+		},
+		"drizzle-kit": {
+			"esbuild": "^0.23.0"
+		},
+		"@cloudflare/workers-types": "^5.20260801.1"
 	},
 	"engines": {
-		"node": ">=16.13"
+		"node": ">=22.0.0"
 	},
 	"msw": {
 		"workerDirectory": "public"
