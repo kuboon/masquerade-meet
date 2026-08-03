@@ -85,11 +85,16 @@ npx wrangler tail               # 本番のログを流す
 
 任意で [Cloudflare の TURN サービス](https://developers.cloudflare.com/calls/turn/)を使う場合は、`TURN_SERVICE_ID` と `TURN_SERVICE_TOKEN` を `.dev.vars` に足してから `npm run deploy:secrets` を実行してください。
 
-### ワンクリックで試す
+### GitHub Actions で自動デプロイする
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/kuboon/masquerade-meet)
+`main` に push すると自動でデプロイされるようにしてあります（`.github/workflows/ci.yml`）。リポジトリの **Settings → Secrets and variables → Actions** に次の 2 つを登録すれば有効になります。
 
-このボタンは自分の GitHub アカウントにリポジトリを複製し、[Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) で CI/CD（push ごとの自動デプロイと PR プレビュー URL）まで設定します。ただし Realtime の認証情報は自動では入らないので、デプロイ後に Worker の設定画面か `npm run deploy:secrets` で `CALLS_APP_ID` と `CALLS_APP_SECRET` を追加してください。
+| Secret                  | 取得先                                                                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | [API トークン](https://dash.cloudflare.com/profile/api-tokens)。**Edit Cloudflare Workers** テンプレートでそのまま作れます |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare ダッシュボードの右サイドバー、または `npx wrangler whoami`                                                      |
+
+Realtime の認証情報は Worker のシークレットとして一度入れれば十分なので、毎回のデプロイでは触りません。GitHub 側から入れ直したいときは `CALLS_APP_ID` と `CALLS_APP_SECRET` も Actions secrets に登録したうえで、**Actions → Sync Worker secrets → Run workflow** を手動で実行してください（`.github/workflows/sync-secrets.yml`）。ローカルから `npm run deploy:secrets` を叩くのと同じことをします。
 
 ## 既知の制限
 
