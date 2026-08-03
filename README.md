@@ -94,6 +94,6 @@ npm run deploy
 
 ## ライセンス
 
-このリポジトリのコードは MIT ライセンスです（[LICENSE](./LICENSE)）。
+Apache License 2.0（[LICENSE](./LICENSE)）。
 
-ただし本プロジェクトは [cloudflare/orange](https://github.com/cloudflare/orange)（Apache License 2.0, Copyright (c) 2024 Cloudflare, Inc.）の派生物であり、由来するコードには引き続き Apache License 2.0 が適用されます。原ライセンス全文は [LICENSE.orange](./LICENSE.orange) にあります。
+本プロジェクトは [cloudflare/orange](https://github.com/cloudflare/orange)（Apache License 2.0, Copyright (c) 2024 Cloudflare, Inc.）の派生物です。帰属表示は [NOTICE](./NOTICE) にまとめてあります。

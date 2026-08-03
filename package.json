@@ -1,5 +1,6 @@
 {
 	"name": "masquerade-meet",
+	"license": "Apache-2.0",
 	"scripts": {
 		"build": "remix build",
 		"build:e2ee-worker": "./rust-mls-worker/build.sh",
