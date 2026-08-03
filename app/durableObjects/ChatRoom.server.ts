@@ -12,6 +12,7 @@ import assertNever from '~/utils/assertNever'
 import { assertNonNullable } from '~/utils/assertNonNullable'
 import { characters, getCharacter } from '~/utils/characters'
 import getUsername from '~/utils/getUsername.server'
+import { canStartMeeting } from '~/utils/masquerade'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -475,8 +476,10 @@ export class ChatRoom extends Server<Env> {
 					if (phase !== 'lobby') break
 
 					const users = [...(await this.getUsers()).values()]
-					// "everyone is here" is the whole point — don't start early.
-					if (users.length === 0 || users.some((u) => !u.ready)) break
+					// "everyone is here" is the whole point — don't start early,
+					// and don't start a masquerade the host would be attending
+					// alone.
+					if (!canStartMeeting(users)) break
 
 					await this.ctx.storage.put(
 						PHASE_KEY,

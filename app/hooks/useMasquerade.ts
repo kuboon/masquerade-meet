@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
 import { getCharacter, neutralVoice } from '~/utils/characters'
+import { canStartMeeting } from '~/utils/masquerade'
 import { setVoiceParams } from '~/utils/voiceChanger'
 import type useRoom from './useRoom'
 import type { UserMedia } from './useUserMedia'
@@ -110,6 +111,8 @@ export default function useMasquerade({
 		participants,
 		takenCharacterIds,
 		everyoneReady,
+		/** the same rule the room enforces, so the button cannot over-promise */
+		canStart: canStartMeeting(participants),
 		readyCount: participants.filter((u) => u.ready).length,
 		/** the meeting is under way — the lobby should hand over to the room */
 		meetingStarted: phase !== 'lobby',
