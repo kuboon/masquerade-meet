@@ -21,9 +21,14 @@ name = "rooms"
 class_name = "ChatRoom"
 
 # Indicate that you want the ChatRoom class to be callable as Durable Objects.
+# `new_sqlite_classes` rather than `new_classes`: SQLite-backed Durable Objects
+# are the only kind the free plan will create, and they are what Cloudflare
+# recommends for new namespaces regardless of plan. ChatRoom only ever touches
+# the key-value storage API (`get`/`put`/`delete`/alarms), which both backends
+# support identically, so nothing in the room logic depends on the choice.
 [[migrations]]
 tag = "v1" # Should be unique for each entry
-new_classes = ["ChatRoom"]
+new_sqlite_classes = ["ChatRoom"]
 
 # Required secrets (see .dev.vars.example):
 # - CALLS_APP_ID
