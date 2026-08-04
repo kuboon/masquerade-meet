@@ -13,7 +13,7 @@ import {
 	defaultCharacterSetId,
 	getCharacterSet,
 } from '~/utils/characterSets'
-import type { VoiceParams } from '~/utils/characters'
+import type { Character, CharacterSet, VoiceParams } from '~/utils/characters'
 import { cn } from '~/utils/style'
 import {
 	applyVoiceParams,
@@ -63,6 +63,20 @@ function toSource(voice: VoiceParams) {
 }
 
 /**
+ * Every character in the set, in file order, each block labelled with the id
+ * it belongs to. Dialling in a set means fifteen edits to one file, and
+ * hunting them down one character at a time is how one gets forgotten.
+ */
+function toSetSource(
+	set: CharacterSet,
+	voiceOf: (c: Character) => VoiceParams
+) {
+	return set.characters
+		.map((c) => `// ${c.id} — ${c.name}\n${toSource(voiceOf(c))}`)
+		.join('\n\n')
+}
+
+/**
  * Dials in a character's voice by ear.
  *
  * The graph below is the production one — the same worklet and the same tone
@@ -86,6 +100,12 @@ export default function DevVoice() {
 	const [drafts, setDrafts] = useLocalStorage<Drafts>(DRAFTS_KEY, {})
 	const draft = drafts?.[characterSet.id]?.[character.id]
 	const voice = draft ?? character.voice
+	// Whatever is current for a character: the draft if it has one, otherwise
+	// what the source file says. Both the export and the whole-set snippet are
+	// built from this, so an untouched character still comes out.
+	const voiceOf = (c: Character) => drafts?.[characterSet.id]?.[c.id] ?? c.voice
+
+	const [wholeSet, setWholeSet] = useState(false)
 
 	const [recording, setRecording] = useState(false)
 	const [secondsLeft, setSecondsLeft] = useState(RECORD_SECONDS)
@@ -238,10 +258,7 @@ export default function DevVoice() {
 
 	const download = () => {
 		const voices = Object.fromEntries(
-			characterSet.characters.map((c) => [
-				c.id,
-				drafts?.[characterSet.id]?.[c.id] ?? c.voice,
-			])
+			characterSet.characters.map((c) => [c.id, voiceOf(c)])
 		)
 		const blob = new Blob(
 			[
@@ -482,20 +499,41 @@ export default function DevVoice() {
 				</div>
 			</div>
 
-			<div className="space-y-2">
-				<div className="flex items-center justify-between">
-					<Label htmlFor="snippet">貼り付け用</Label>
-					<Button className="text-xs" onClick={download}>
-						JSON をダウンロード
-					</Button>
+			<div className="space-y-2 rounded-lg bg-zinc-100 p-4 dark:bg-zinc-800">
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<Label htmlFor="snippet">書き出し</Label>
+					<div className="flex items-center gap-3">
+						<Toggle
+							id="whole-set"
+							checked={wholeSet}
+							onCheckedChange={(checked) => setWholeSet(checked === true)}
+						/>
+						<Label htmlFor="whole-set" className="text-sm">
+							セット全体
+						</Label>
+						<Button className="text-xs" onClick={download}>
+							セット全体を JSON で保存
+						</Button>
+					</div>
 				</div>
 				<TextArea
 					id="snippet"
 					readOnly
-					rows={9}
+					rows={wholeSet ? 20 : 9}
 					className="font-mono text-xs"
-					value={toSource(voice)}
+					value={
+						wholeSet ? toSetSource(characterSet, voiceOf) : toSource(voice)
+					}
 				/>
+				<p className="text-xs text-zinc-500 dark:text-zinc-400">
+					JSON は常にセット全体（{characterSet.characters.length}
+					体）を含みます。上のテキストは「セット全体」で全員分、オフなら選択中の
+					1 体だけです。 編集していないキャラクターはソースの値のまま出ます。
+					貼り戻し先は <code>
+						app/utils/characterSets/{characterSet.id}.ts
+					</code>{' '}
+					です。
+				</p>
 			</div>
 		</div>
 	)
