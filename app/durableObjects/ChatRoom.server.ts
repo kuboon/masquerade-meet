@@ -115,19 +115,18 @@ export class ChatRoom extends Server<Env> {
 
 		const characterSet = getCharacterSet(await this.resolveCharacterSetId(ctx))
 
+		const joinedAt = await this.firstSeenAt(connection.id)
+
 		let user = await this.ctx.storage.get<StoredUser>(
 			`session-${connection.id}`
 		)
 		const foundInStorage = user !== undefined
 		if (user !== undefined) {
-			// A seat stored before arrival times were recorded. Stamping it on
-			// the way back in is as close as the room can get; the alternative
-			// is a seat that can never inherit the host controls.
-			user = { ...user, joinedAt: user.joinedAt ?? Date.now() }
+			user = { ...user, joinedAt }
 		} else {
 			user = {
 				id: connection.id,
-				joinedAt: Date.now(),
+				joinedAt,
 				// The real name is kept apart from the broadcast name and only
 				// surfaces once the room has been revealed.
 				realName: username,
@@ -303,6 +302,28 @@ export class ChatRoom extends Server<Env> {
 		const id = isCharacterSetId(requested) ? requested : defaultCharacterSetId
 		await this.ctx.storage.put(CHARACTER_SET_KEY, id)
 		return id
+	}
+
+	/**
+	 * When this connection was first seen in this room, ever.
+	 *
+	 * Kept apart from the seat and outlived by nothing: a seat is cleared the
+	 * moment its page goes away, so an owner who reloads out of trouble would
+	 * otherwise come back as the newest arrival and lose their place in line
+	 * for the host controls for good. This way the controls come back to them
+	 * when whoever picked them up in the meantime leaves.
+	 *
+	 * The room decides this, rather than taking the client's word for it —
+	 * otherwise anybody could claim to have been here since the beginning and
+	 * put themselves next in line. It goes away with the meeting.
+	 */
+	private async firstSeenAt(connectionId: string): Promise<number> {
+		const key = `firstSeen-${connectionId}`
+		const seen = await this.ctx.storage.get<number>(key)
+		if (seen !== undefined) return seen
+		const now = Date.now()
+		await this.ctx.storage.put(key, now)
+		return now
 	}
 
 	/** Characters already spoken for, so nobody ends up with a twin. */

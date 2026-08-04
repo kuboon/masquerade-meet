@@ -38,9 +38,10 @@ export type User = {
 export type StoredUser = User & {
 	realName: string
 	/**
-	 * When this seat was first taken, on the room's clock. Survives a reload —
-	 * the seat is keyed by a connection id that does — and decides who picks up
-	 * the host controls if the host disappears.
+	 * When this connection was first seen in the room, on the room's clock. It
+	 * decides who picks up the host controls if the host disappears, and it
+	 * outlives the seat — the room keeps it separately, so a reload does not
+	 * send somebody to the back of the queue.
 	 *
 	 * Optional because rooms that predate it have seats without one, and kept
 	 * out of the broadcast: nobody needs to know who arrived when, and while
