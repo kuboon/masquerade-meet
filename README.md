@@ -31,7 +31,7 @@ Cloudflare の [Orange Meets](https://github.com/cloudflare/orange) をベース
 
 同じ理由で、`userUpdate` メッセージのうちクライアントが所有できるのはメディア状態（トラック、挙手、発話中）だけで、名前・キャラクター・準備状態・管理者権限はサーバー側が持ちます。
 
-カメラは解除まで一度も配信されません（`getCamera({ broadcasting: false })`）。
+カメラは解除まで一度も配信されません（`getCamera({ broadcasting: false })`）。入室時に必要な権限も **マイクだけ** です。カメラは同じプロンプトでまとめて聞きますが、断られても、そもそも付いていない端末でも入室できます（`EnsurePermissions` がマイクのみで取り直します）。
 
 ### カウントダウンの同期
 
