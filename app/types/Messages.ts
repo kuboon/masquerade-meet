@@ -96,6 +96,22 @@ export type ServerMessage =
 			type: 'userLeftNotification'
 			id: string
 	  }
+	| {
+			type: 'chatMessage'
+			/** unique per room, so the log can be keyed and de-duplicated */
+			id: string
+			/**
+			 * The sender's connection id — deliberately not their name. Turning
+			 * an id into a name is the roster's job, and the roster serves
+			 * character names until the reveal and real ones after it, so the
+			 * log unmasks along with everything else and no real name is ever
+			 * on the wire early.
+			 */
+			from: string
+			body: string
+			/** the Durable Object's clock, so everyone orders the log alike */
+			at: number
+	  }
 
 export type ClientMessage =
 	| {
@@ -141,6 +157,10 @@ export type ClientMessage =
 	  }
 	| {
 			type: 'restartMeeting'
+	  }
+	| {
+			type: 'chatMessage'
+			body: string
 	  }
 	| {
 			type: 'enableAi'

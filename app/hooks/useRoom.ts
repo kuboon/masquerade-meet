@@ -93,6 +93,10 @@ export default function useRoom({
 					break
 				case 'directMessage':
 					break
+				case 'chatMessage':
+					// Kept by useTextChat, which is mounted inside the meeting so
+					// that the log cannot outlive it.
+					break
 				case 'muteMic':
 					userMedia.turnMicOff()
 					break

@@ -69,6 +69,21 @@ test('two users meet in disguise and are then revealed', async ({
 		})
 		.toBeGreaterThanOrEqual(2)
 
+	// text chat, sent from behind a mask. The panel stays open on the guest's
+	// side across the reveal below, which is where the interesting part is.
+	const chatPanel = (page: Page) =>
+		page.getByRole('complementary', { name: 'チャット' })
+	for (const page of [host, guest]) {
+		await page.getByRole('button', { name: 'チャット' }).click()
+	}
+	await host.getByPlaceholder('メッセージを入力').fill('だれでしょう')
+	await host.getByRole('button', { name: '送信' }).click()
+
+	await expect(chatPanel(guest).getByText('だれでしょう')).toBeVisible()
+	// Signed by a character, not by a person. The room never puts a real name
+	// on the wire before the reveal, and this is the line that would carry it.
+	await expect(chatPanel(guest).getByText('kevin')).toHaveCount(0)
+
 	await host.getByRole('button', { name: '正体を明かす' }).click()
 	await host.getByRole('button', { name: 'カウントダウン開始' }).click()
 
@@ -76,6 +91,9 @@ test('two users meet in disguise and are then revealed', async ({
 	await expect
 		.poll(async () => guest.locator('video').count(), { timeout: 20_000 })
 		.toBe(2)
+
+	// and the log unmasks along with the faces: the same line, now signed
+	await expect(chatPanel(guest).getByText('kevin')).toBeVisible()
 
 	// and starting over still works from the other side of the reveal
 	await host.getByRole('button', { name: '最初から' }).click()

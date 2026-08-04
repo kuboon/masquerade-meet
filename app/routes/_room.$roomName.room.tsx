@@ -26,6 +26,7 @@ import { RevealButton } from '~/components/RevealButton'
 import { RevealCountdown } from '~/components/RevealCountdown'
 import { SafetyNumberToast } from '~/components/SafetyNumberToast'
 import { ScreenshareButton } from '~/components/ScreenshareButton'
+import { ChatButton, TextChat } from '~/components/TextChat'
 import Toast, { useDispatchToast } from '~/components/Toast'
 import useBroadcastStatus from '~/hooks/useBroadcastStatus'
 import useIsSpeaking from '~/hooks/useIsSpeaking'
@@ -33,6 +34,7 @@ import { useRoomContext } from '~/hooks/useRoomContext'
 import { useShowDebugInfoShortcut } from '~/hooks/useShowDebugInfoShortcut'
 import useSounds from '~/hooks/useSounds'
 import useStageManager from '~/hooks/useStageManager'
+import useTextChat from '~/hooks/useTextChat'
 import { useUserJoinLeaveToasts } from '~/hooks/useUserJoinLeaveToasts'
 import { dashboardLogsLink } from '~/utils/dashboardLogsLink'
 import getUsername from '~/utils/getUsername.server'
@@ -114,8 +116,17 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 		otherUsers,
 		websocket,
 		identity,
-		roomState: { meetingId },
+		roomState: { meetingId, users },
 	} = room
+
+	// Mounted here rather than beside the room: the log is meant to last one
+	// meeting, and this is what unmounts when the meeting ends.
+	const { messages, sendChatMessage } = useTextChat({ websocket, users })
+	const [chatOpen, setChatOpen] = useState(false)
+	const [readCount, setReadCount] = useState(0)
+	useEffect(() => {
+		if (chatOpen) setReadCount(messages.length)
+	}, [chatOpen, messages.length])
 
 	// only want this evaluated once upon mounting
 	const [firstUser] = useState(otherUsers.length === 0)
@@ -223,6 +234,15 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 							</span>
 						</div>
 					)}
+					{chatOpen && (
+						<TextChat
+							messages={messages}
+							users={users}
+							selfId={identity?.id}
+							onSend={sendChatMessage}
+							onClose={() => setChatOpen(false)}
+						/>
+					)}
 					<Toast.Viewport className="absolute bottom-0 right-0" />
 				</div>
 				<div className="flex flex-wrap items-center justify-center gap-2 p-2 text-sm md:gap-4 md:p-5 md:text-base">
@@ -235,6 +255,11 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 					<RaiseHandButton
 						raisedHand={raisedHand}
 						onClick={() => setRaisedHand(!raisedHand)}
+					/>
+					<ChatButton
+						open={chatOpen}
+						unread={messages.length - readCount}
+						onClick={() => setChatOpen((open) => !open)}
 					/>
 					<ParticipantsButton
 						identity={identity}
