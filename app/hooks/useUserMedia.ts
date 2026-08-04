@@ -51,15 +51,46 @@ export function allowStillImage(allowed: boolean) {
 	stillImageAllowed$.next(allowed)
 }
 
+/**
+ * Whether the camera has been asked for — the intent, not the result.
+ *
+ * partytracks only opens the device once something subscribes to
+ * `camera.broadcastTrack$`, and `isBroadcasting$` is pushed from inside that
+ * subscription. It is therefore only meaningful while the camera is the
+ * track being published, which is exactly when we are deciding whether it
+ * should be:
+ *
+ *  - turning on: nothing is subscribed to the camera while the picture
+ *    stands in, so it never opens, never reports broadcasting, and the
+ *    switch never moves to it. The camera could never be turned on at all.
+ *  - turning off: the switch drops the camera subscription, so the pipeline
+ *    is gone before it can report false, and it stays stuck on true.
+ *
+ * The intent has neither problem, so everything — the switch, the camera
+ * button, and what the room tells everyone else — reads this instead.
+ */
+export const cameraWanted$ = new BehaviorSubject(false)
+
+/** Module-level so their identity is stable — effects depend on them. */
+export function turnCameraOn() {
+	cameraWanted$.next(true)
+	camera.startBroadcasting()
+}
+
+export function turnCameraOff() {
+	cameraWanted$.next(false)
+	camera.stopBroadcasting()
+}
+
 export const stillImageActive$ = combineLatest([
 	stillImageAllowed$,
-	camera.isBroadcasting$,
+	cameraWanted$,
 	stillImage$,
 ]).pipe(
-	// The camera wins if it is on: turning it on is a deliberate act, and the
-	// picture is what you fall back to rather than something you are stuck
-	// with.
-	map(([allowed, broadcasting, image]) => allowed && !broadcasting && !!image),
+	// The camera wins if it is asked for: turning it on is a deliberate act,
+	// and the picture is what you fall back to rather than something you are
+	// stuck with.
+	map(([allowed, wanted, image]) => allowed && !wanted && !!image),
 	// camera.isBroadcasting$ is pushed from inside camera.broadcastTrack$'s own
 	// pipeline, so subscribing to that track makes this re-emit — and the
 	// switchMap below would resubscribe the track, which pushes again, forever.
@@ -101,8 +132,8 @@ export const outgoingVideoTrack$ = combineLatest([
  */
 export const outgoingVideoEnabled$ = combineLatest([
 	stillImageActive$,
-	camera.isBroadcasting$,
-]).pipe(map(([still, broadcasting]) => still || broadcasting))
+	cameraWanted$,
+]).pipe(map(([still, wanted]) => still || wanted))
 
 function useNoiseSuppression() {
 	const [suppressNoise, setSuppressNoise] = useLocalStorage(
@@ -213,7 +244,7 @@ export default function useUserMedia(options: {
 			console.error('Unknown error getting video track: ', e)
 		}
 		setVideoUnavailableReason(reason)
-		camera.stopBroadcasting()
+		turnCameraOff()
 	})
 
 	return {
@@ -236,10 +267,10 @@ export default function useUserMedia(options: {
 			if (found) camera.setPreferredDevice(found)
 		},
 		videoDeviceId: useObservableAsValue(camera.activeDevice$)?.deviceId,
-		turnCameraOn: camera.startBroadcasting,
-		turnCameraOff: camera.stopBroadcasting,
+		turnCameraOn,
+		turnCameraOff,
 		/** the camera itself — what the camera button reflects and toggles */
-		videoEnabled: useObservableAsValue(camera.isBroadcasting$, false),
+		videoEnabled: useObservableAsValue(cameraWanted$, false),
 		/** camera or picture: what the other participants are told to expect */
 		outgoingVideoEnabled: useObservableAsValue(outgoingVideoEnabled$, false),
 		/** true when the stored picture is standing in for the camera */

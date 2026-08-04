@@ -49,7 +49,6 @@ export default function DevStillImage() {
 
 	const active = useObservableAsValue(stillImageActive$, undefined)
 	const broadcasting = useObservableAsValue(camera.isBroadcasting$, undefined)
-	const cameraTrack = useObservableAsValue(camera.broadcastTrack$, undefined)
 	const image = useObservableAsValue(stillImage$, undefined)
 	// Read through the hook, not the observables behind it: the camera button
 	// consumes these fields, and the bug that broke it was the hook handing
@@ -94,15 +93,18 @@ export default function DevStillImage() {
 				<Button onClick={() => setRevealed((r) => !r)}>
 					{revealed ? '変装に戻す' : 'アンマスクする'}
 				</Button>
+				{/* Through the hook, exactly as CameraButton does. Calling
+				    partytracks directly here would sail past the deadlock that
+				    made the real button useless. */}
 				<Button
 					displayType="secondary"
 					onClick={() =>
-						broadcasting
-							? camera.stopBroadcasting()
-							: camera.startBroadcasting()
+						userMedia.videoEnabled
+							? userMedia.turnCameraOff()
+							: userMedia.turnCameraOn()
 					}
 				>
-					{broadcasting ? 'カメラを止める' : 'カメラを使う'}
+					{userMedia.videoEnabled ? 'カメラを止める' : 'カメラを使う'}
 				</Button>
 			</div>
 
@@ -125,7 +127,9 @@ export default function DevStillImage() {
 				<dd data-testid="frame-count">{frames}</dd>
 				<dt className="text-zinc-500 dark:text-zinc-400">active</dt>
 				<dd data-testid="dbg-active">{String(active)}</dd>
-				<dt className="text-zinc-500 dark:text-zinc-400">カメラ稼働中</dt>
+				<dt className="text-zinc-500 dark:text-zinc-400">
+					カメラのデバイス状態
+				</dt>
 				<dd data-testid="dbg-broadcasting">{String(broadcasting)}</dd>
 				<dt className="text-zinc-500 dark:text-zinc-400">
 					videoEnabled（カメラボタンが見る値）
@@ -136,10 +140,6 @@ export default function DevStillImage() {
 				<dt className="text-zinc-500 dark:text-zinc-400">映像を送出中</dt>
 				<dd data-testid="dbg-outgoing">
 					{String(userMedia.outgoingVideoEnabled)}
-				</dd>
-				<dt className="text-zinc-500 dark:text-zinc-400">cameraTrack</dt>
-				<dd data-testid="dbg-camera">
-					{cameraTrack ? cameraTrack.label || 'track' : String(cameraTrack)}
 				</dd>
 				<dt className="text-zinc-500 dark:text-zinc-400">image</dt>
 				<dd data-testid="dbg-image">

@@ -98,14 +98,21 @@ test.describe('the camera alongside the picture', () => {
 		await expect(page.getByTestId('dbg-active')).toHaveText('true')
 
 		await page.getByRole('button', { name: 'カメラを使う' }).click()
-		await expect(page.getByTestId('dbg-broadcasting')).toHaveText('true')
 		await expect(page.getByTestId('dbg-video-enabled')).toHaveText('true')
-		// Turning the camera on by hand wins over the picture.
+		// Turning the camera on by hand wins over the picture, and the device
+		// really does open — nothing subscribes to it while the picture is
+		// standing in, so this is where "the camera can never be turned on"
+		// would show up.
 		await expect(page.getByTestId('dbg-active')).toHaveText('false')
 		await expect(page.getByTestId('dbg-outgoing')).toHaveText('true')
+		await expect(page.getByTestId('dbg-broadcasting')).toHaveText('true')
 
+		// And back. The device state cannot be trusted here — the switch drops
+		// the camera subscription before the pipeline can report false — so the
+		// button has to be reading the intent.
 		await page.getByRole('button', { name: 'カメラを止める' }).click()
-		await expect(page.getByTestId('dbg-broadcasting')).toHaveText('false')
+		await expect(page.getByTestId('dbg-video-enabled')).toHaveText('false')
 		await expect(page.getByTestId('dbg-active')).toHaveText('true')
+		await expect(page.getByTestId('dbg-outgoing')).toHaveText('true')
 	})
 })
