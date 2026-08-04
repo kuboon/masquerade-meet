@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 
 test('two users meet in disguise and are then revealed', async ({
@@ -6,22 +7,26 @@ test('two users meet in disguise and are then revealed', async ({
 	// can't use nanoid here :(
 	const location = `http://localhost:8787/${crypto.randomUUID()}`
 
-	const context = await browser.newContext()
+	const context = await browser.newContext({
+		permissions: ['camera', 'microphone'],
+	})
+
+	// The name is asked for in the lobby now, under the character picker,
+	// and nobody can ready up without one.
+	const enterLobby = async (page: Page, name: string) => {
+		await page.goto(location)
+		await page.getByLabel('名前').fill(name)
+		const ready = page.getByRole('button', { name: '準備完了', exact: true })
+		await expect(ready).toBeEnabled({ timeout: 15_000 })
+		await ready.click()
+	}
 
 	// the first person into the room becomes its host
 	const host = await context.newPage()
-	await host.goto(location)
-	// The name is asked for in the room now, not on a page of its own.
-	await host.getByLabel('名前').fill('kevin')
-	await host.getByRole('button', { name: '参加する' }).click()
-	await expect(
-		host.getByRole('button', { name: '準備完了', exact: true })
-	).toBeVisible()
-	await host.getByRole('button', { name: '準備完了', exact: true }).click()
+	await enterLobby(host, 'kevin')
 
 	const guest = await context.newPage()
-	await guest.goto(location)
-	await guest.getByRole('button', { name: '準備完了', exact: true }).click()
+	await enterLobby(guest, 'sam')
 
 	// the meeting can only start once everybody is ready
 	await host.getByRole('button', { name: 'ミーティング開始' }).click()

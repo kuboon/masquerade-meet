@@ -4,6 +4,7 @@ import { json } from '@remix-run/cloudflare'
 import { useNavigate, useParams, useSearchParams } from '@remix-run/react'
 import { useObservableAsValue } from 'partytracks/react'
 import { useEffect } from 'react'
+import { useLocalStorage } from 'react-use'
 import { AudioIndicator } from '~/components/AudioIndicator'
 import { Button } from '~/components/Button'
 import { CharacterAvatar } from '~/components/CharacterAvatar'
@@ -12,6 +13,7 @@ import { CopyButton } from '~/components/CopyButton'
 import { Disclaimer } from '~/components/Disclaimer'
 import { Icon } from '~/components/Icon/Icon'
 import { MicButton } from '~/components/MicButton'
+import { UnmaskedIdentity } from '~/components/UnmaskedIdentity'
 
 import { SettingsButton } from '~/components/SettingsDialog'
 import { Spinner } from '~/components/Spinner'
@@ -71,11 +73,28 @@ export default function Lobby() {
 		isHost,
 		meetingStarted,
 		selectCharacter,
+		setDisplayName,
 		setReady,
 		startMeeting,
 	} = masquerade
 
 	const ready = identity?.ready ?? false
+
+	// Remembered so a regular does not retype it every time. The room never
+	// broadcasts it back — it is stripped from the public user list until the
+	// reveal — so this is the only copy the UI has.
+	const [storedName, setStoredName] = useLocalStorage(
+		'masquerade:display-name',
+		''
+	)
+	const displayName = storedName ?? ''
+
+	// Pushed to the room after a pause rather than on every keystroke: each
+	// one would otherwise fan a room state broadcast out to everybody.
+	useEffect(() => {
+		const timeout = setTimeout(() => setDisplayName(displayName.trim()), 300)
+		return () => clearTimeout(timeout)
+	}, [displayName, setDisplayName])
 
 	// Everyone waits here until the host starts the meeting, then walks in
 	// together — that simultaneous arrival is what makes the disguises work.
@@ -167,6 +186,12 @@ export default function Lobby() {
 					</p>
 				</div>
 
+				<UnmaskedIdentity
+					name={displayName}
+					onNameChange={setStoredName}
+					disabled={ready}
+				/>
+
 				{sessionError && (
 					<div className="rounded-md bg-red-200 p-3 text-sm text-zinc-800 dark:bg-red-700 dark:text-zinc-200">
 						{sessionError}
@@ -191,7 +216,9 @@ export default function Lobby() {
 				<div className="flex flex-wrap items-center gap-4 text-sm">
 					<Button
 						onClick={() => setReady(!ready)}
-						disabled={!session?.sessionId || !character}
+						disabled={
+							!session?.sessionId || !character || displayName.trim() === ''
+						}
 						displayType={ready ? 'secondary' : 'primary'}
 					>
 						{ready ? '準備完了を取り消す' : '準備完了'}

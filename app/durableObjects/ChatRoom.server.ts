@@ -9,7 +9,6 @@ import type {
 } from '~/types/Messages'
 import { assertError } from '~/utils/assertError'
 import assertNever from '~/utils/assertNever'
-import { assertNonNullable } from '~/utils/assertNonNullable'
 import {
 	defaultCharacterSetId,
 	getCharacter,
@@ -49,6 +48,9 @@ const PHASE_KEY = 'masquerade:phase'
 const REVEAL_AT_KEY = 'masquerade:revealAt'
 const HOST_KEY = 'masquerade:hostId'
 const CHARACTER_SET_KEY = 'masquerade:characterSetId'
+
+/** Long enough for a real name, short enough not to break the tiles. */
+const MAX_NAME_LENGTH = 40
 
 /**
  * The ChatRoom Durable Object Class
@@ -98,8 +100,9 @@ export class ChatRoom extends Server<Env> {
 			this.ctx.storage.setAlarm(Date.now() + alarmInterval)
 		}
 
-		const username = await getUsername(ctx.request)
-		assertNonNullable(username)
+		// May be null. The name is asked for in the lobby, and nobody can ready
+		// up without one, so a seat starts out anonymous rather than refused.
+		const username = (await getUsername(ctx.request)) ?? ''
 
 		const characterSet = getCharacterSet(await this.resolveCharacterSetId(ctx))
 
@@ -321,7 +324,7 @@ export class ChatRoom extends Server<Env> {
 			users.push({
 				...rest,
 				name: revealed
-					? realName
+					? realName || '???'
 					: (getCharacter(set, stored.characterId)?.name ?? '???'),
 			})
 		}
@@ -474,6 +477,22 @@ export class ChatRoom extends Server<Env> {
 					await this.broadcastRoomState()
 					break
 				}
+				case 'setDisplayName': {
+					const stored = await this.ctx.storage.get<StoredUser>(
+						`session-${connection.id}`
+					)
+					if (!stored) break
+					// Only ever their own name, and only the one they are hiding
+					// behind until the reveal — getPublicUsers keeps it back.
+					const name = data.name.trim().slice(0, MAX_NAME_LENGTH)
+					if (name === stored.realName) break
+					await this.ctx.storage.put(`session-${connection.id}`, {
+						...stored,
+						realName: name,
+					} satisfies StoredUser)
+					await this.broadcastRoomState()
+					break
+				}
 				case 'selectCharacter': {
 					const stored = await this.ctx.storage.get<StoredUser>(
 						`session-${connection.id}`
@@ -499,8 +518,9 @@ export class ChatRoom extends Server<Env> {
 						`session-${connection.id}`
 					)
 					if (!stored) break
-					// Without a character there is nothing to hide behind.
-					if (data.ready && !stored.characterId) break
+					// Without a character there is nothing to hide behind, and
+					// without a name the reveal at the end has nothing to reveal.
+					if (data.ready && (!stored.characterId || !stored.realName)) break
 					await this.ctx.storage.put(`session-${connection.id}`, {
 						...stored,
 						ready: data.ready,
