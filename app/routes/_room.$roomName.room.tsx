@@ -164,7 +164,18 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 	const someScreenshare =
 		otherUsers.some((u) => u.tracks.screenShareEnabled) ||
 		Boolean(identity?.tracks.screenShareEnabled)
-	const stageLimit = width < 600 ? 2 : someScreenshare ? 5 : 9
+	// While everyone is masked the tiles are still pictures, so there is nothing
+	// to save by leaving people out — and in a game of who-is-who, the whole
+	// table is the point. Live video is another matter, and so is a
+	// screenshare, which wants the room to itself; both keep the limits that
+	// make a call watchable.
+	const stageLimit = someScreenshare
+		? 5
+		: masquerade.revealed
+			? width < 600
+				? 2
+				: 9
+			: masquerade.characterSet.characters.length
 
 	const { recordActivity, actorsOnStage } = useStageManager(
 		otherUsers,
