@@ -132,7 +132,10 @@ export class ChatRoom extends Server<Env> {
 				// surfaces once the room has been revealed.
 				realName: username,
 				name: username,
-				characterId: await this.pickCharacterPreference(characterSet),
+				characterId: await this.pickCharacterPreference(
+					characterSet,
+					new URL(ctx.request.url).searchParams.get('want')
+				),
 				ready: false,
 				joined: false,
 				raisedHand: false,
@@ -313,18 +316,26 @@ export class ChatRoom extends Server<Env> {
 	}
 
 	/**
-	 * The character a new arrival starts out wanting.
+	 * The character a new arrival starts out wearing.
 	 *
-	 * Prefers one nobody else has picked so a room that nobody touches still
-	 * ends up varied, but falls back to any of them: preferences are allowed
-	 * to clash, and somebody arriving late should not be left with nothing
-	 * selected.
+	 * `wanted` is a returning participant asking for the face they had before
+	 * — a reload clears the seat, so without this they would come back as
+	 * somebody else mid-meeting. It is granted only if it is still free;
+	 * whoever is wearing it now was here in the meantime and keeps it.
+	 *
+	 * Otherwise one nobody has taken, at random. Undefined when there are none
+	 * left: the room is full, and two people behind the same face is worse
+	 * than one person who cannot join.
 	 */
-	async pickCharacterPreference(set: CharacterSet): Promise<string> {
+	async pickCharacterPreference(
+		set: CharacterSet,
+		wanted?: string | null
+	): Promise<string | undefined> {
 		const taken = await this.getTakenCharacterIds()
 		const free = set.characters.filter((c) => !taken.has(c.id))
-		const pool = free.length > 0 ? free : set.characters
-		return pool[Math.floor(Math.random() * pool.length)].id
+		if (wanted && free.some((c) => c.id === wanted)) return wanted
+		if (free.length === 0) return undefined
+		return free[Math.floor(Math.random() * free.length)].id
 	}
 
 	/**
@@ -521,8 +532,15 @@ export class ChatRoom extends Server<Env> {
 					const character = getCharacter(characterSet, data.characterId)
 					if (!character) break
 
-					// No collision check: in the lobby a character is a wish, not
-					// a claim. Clashes are drawn for when the meeting starts.
+					// In the lobby a character is a wish, not a claim, and clashes
+					// are drawn for when the meeting starts. Once a meeting is
+					// running the draw has already happened, so a wish would put
+					// two people behind one face.
+					const { phase } = await this.getMasqueradeState()
+					if (phase !== 'lobby') {
+						const taken = await this.getTakenCharacterIds(connection.id)
+						if (taken.has(character.id)) break
+					}
 					await this.ctx.storage.put(`session-${connection.id}`, {
 						...stored,
 						characterId: character.id,

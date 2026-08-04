@@ -40,11 +40,11 @@ jobs:
       # Everything except joining-room.spec.ts, which drives a real meeting
       # and needs Cloudflare Realtime credentials we do not want in CI. The
       # DSP spec is self-contained in an OfflineAudioContext, the tuner spec
-      # gets by on Chromium's fake capture device, and host succession is
-      # settled in the lobby, before any of that is needed.
+      # gets by on Chromium's fake capture device, and host succession and
+      # rejoining are settled in the lobby, before any of that is needed.
       - run: >
           npx playwright test
-          voice-changer dev-voice entry still-image host-succession
+          voice-changer dev-voice entry still-image host-succession rejoining
         env:
           # serve the built worker instead of the Remix watch-mode dev server
           PLAYWRIGHT_WEB_SERVER_COMMAND: npm start
