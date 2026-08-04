@@ -1,60 +1,45 @@
-import type { ActionFunction, LoaderFunctionArgs } from '@remix-run/cloudflare'
-import { json, redirect } from '@remix-run/cloudflare'
-import { Form, useLoaderData, useNavigate } from '@remix-run/react'
+import { Form, useNavigate } from '@remix-run/react'
 import { nanoid } from 'nanoid'
-import invariant from 'tiny-invariant'
 import { Button } from '~/components/Button'
 import { CharacterSetChooser } from '~/components/CharacterSetChooser'
 import { Disclaimer } from '~/components/Disclaimer'
-import { Input } from '~/components/Input'
-import { Label } from '~/components/Label'
-import { useUserMetadata } from '~/hooks/useUserMetadata'
 import { characterSets } from '~/utils/characterSets'
-import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
-import getUsername from '~/utils/getUsername.server'
-
-export const loader = async ({ request, context }: LoaderFunctionArgs) => {
-	const directoryUrl = context.USER_DIRECTORY_URL
-	const username = await getUsername(request)
-	invariant(username)
-	const usedAccess = request.headers.has(ACCESS_AUTHENTICATED_USER_EMAIL_HEADER)
-	return json({ username, usedAccess, directoryUrl })
-}
-
-export const action: ActionFunction = async ({ request }) => {
-	const room = (await request.formData()).get('room')
-	invariant(typeof room === 'string')
-	return redirect(room.replace(/ /g, '-'))
-}
 
 export default function Index() {
-	const { username, usedAccess } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
-	const { data } = useUserMetadata(username)
 
 	return (
-		<div className="flex flex-col items-center justify-center h-full p-4 mx-auto">
+		<div className="mx-auto flex h-full flex-col items-center justify-center p-4">
 			<div className="flex-1"></div>
-			<div className="space-y-6 sm:min-w-96">
-				<div>
-					<h1 className="text-3xl font-bold">🎭 Masquerade Meet</h1>
-					<p className="pt-1 text-sm text-zinc-500 dark:text-zinc-400">
-						キャラクターに変装して話す、正体あてミーティング
+			<div className="max-w-prose space-y-6">
+				<div className="space-y-3">
+					<h1 className="text-3xl font-bold">🎭 マスカレード</h1>
+					<p className="text-lg text-zinc-600 dark:text-zinc-300">
+						キャラクターに変装して話す、正体あてミーティング。
 					</p>
-					<div className="flex items-center justify-between gap-3">
-						<p className="text-sm text-zinc-500 dark:text-zinc-400">
-							ログイン中: {data?.displayName}
-						</p>
-						{!usedAccess && (
-							<a
-								className="block text-sm underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-								href="/set-username"
-							>
-								Change
-							</a>
-						)}
-					</div>
+					<ul className="space-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+						<li>
+							参加者はそれぞれキャラクターを選び、
+							<strong className="font-semibold">
+								声も見た目もそのキャラクターになった状態
+							</strong>
+							でミーティングを始めます。
+						</li>
+						<li>
+							声はブラウザの中で変換されるので、生の声はサーバーにも他の参加者にも届きません。
+							カメラも配信されず、名前もキャラクター名しか表示されません。
+						</li>
+						<li>
+							頃合いを見て管理者が合図すると、5
+							秒のカウントダウンののち全員の変装が一斉に解けます。
+							そこで初めて、誰が誰だったのかが分かります。
+						</li>
+					</ul>
+					<p className="text-sm text-zinc-500 dark:text-zinc-400">
+						名前とキャラクターはルームに入ってから決めます。
+					</p>
 				</div>
+
 				<Form
 					method="get"
 					action="/new"
@@ -73,28 +58,15 @@ export default function Index() {
 				>
 					{characterSets.length > 1 && <CharacterSetChooser />}
 					<Button className="text-sm" type="submit">
-						あたらしいルームを作る
+						ルームを作る
 					</Button>
 				</Form>
-				<details className="cursor-pointer">
-					<summary className="text-zinc-500 dark:text-zinc-400">
-						ルーム名を入力して参加する
-					</summary>
-					<Form
-						className="grid items-end gap-4 grid-cols-[1fr_auto] w-full pt-4"
-						method="post"
-					>
-						<div className="space-y-2">
-							<Label htmlFor="room">ルーム名</Label>
-							<Input name="room" id="room" required />
-						</div>
-						<Button className="text-xs" type="submit" displayType="secondary">
-							参加
-						</Button>
-					</Form>
-				</details>
+				<p className="text-xs text-zinc-500 dark:text-zinc-400">
+					作成すると URL
+					が発行されます。それを共有すれば、受け取った人はそのまま参加できます。
+				</p>
 			</div>
-			<div className="flex flex-col justify-end flex-1">
+			<div className="flex flex-1 flex-col justify-end">
 				<Disclaimer className="pt-6" />
 			</div>
 		</div>

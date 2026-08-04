@@ -13,7 +13,7 @@ export const Disclaimer: FC<DisclaimerProps> = ({ className }) => {
 				className
 			)}
 		>
-			Masquerade Meet は{' '}
+			マスカレード は{' '}
 			<a className="underline" href="https://github.com/cloudflare/orange">
 				Cloudflare Orange Meets
 			</a>{' '}

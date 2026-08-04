@@ -12,6 +12,7 @@ import { of } from 'rxjs'
 import invariant from 'tiny-invariant'
 import { EnsureOnline } from '~/components/EnsureOnline'
 import { EnsurePermissions } from '~/components/EnsurePermissions'
+import { EnsureUsername } from '~/components/EnsureUsername'
 import { Icon } from '~/components/Icon/Icon'
 import { Spinner } from '~/components/Spinner'
 
@@ -25,6 +26,7 @@ import useUserMedia, { mic } from '~/hooks/useUserMedia'
 import type { TrackObject } from '~/utils/callsTypes'
 import { useE2EE } from '~/utils/e2ee'
 import { getIceServers } from '~/utils/getIceServers.server'
+import getUsername from '~/utils/getUsername.server'
 import { mode } from '~/utils/mode'
 import voiceChangerTransform from '~/utils/voiceChanger'
 
@@ -38,7 +40,7 @@ function trackObjectToString(trackObject?: TrackObject) {
 	return trackObject.sessionId + '/' + trackObject.trackName
 }
 
-export const loader = async ({ context }: LoaderFunctionArgs) => {
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const {
 		env: {
 			TRACE_LINK,
@@ -52,6 +54,9 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
 	} = context
 
 	return json({
+		// Null until the lobby asks for it. Nothing below may connect without
+		// one: the Durable Object attaches it to the seat on connect.
+		username: await getUsername(request),
 		userDirectoryUrl: context.env.USER_DIRECTORY_URL,
 		traceLink: TRACE_LINK,
 		apiExtraParams: API_EXTRA_PARAMS,
@@ -73,29 +78,34 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
 export default function RoomWithPermissions() {
 	const [micDeviceId, setMicDeviceId] = useState<string>()
 	const [cameraDeviceId, setCameraDeviceId] = useState<string>()
+	const { username } = useLoaderData<typeof loader>()
+	const { roomName } = useParams()
+	invariant(roomName)
 	return (
-		<EnsurePermissions
-			onCameraSelected={setCameraDeviceId}
-			onMicSelected={setMicDeviceId}
-		>
-			<EnsureOnline
-				fallback={
-					<div className="grid h-full place-items-center">
-						<div>
-							<h1 className="flex items-center gap-3 text-3xl font-black">
-								<Icon type="SignalSlashIcon" />
-								You are offline
-							</h1>
-						</div>
-					</div>
-				}
+		<EnsureUsername username={username} roomName={roomName}>
+			<EnsurePermissions
+				onCameraSelected={setCameraDeviceId}
+				onMicSelected={setMicDeviceId}
 			>
-				<RoomPreparation
-					micDeviceId={micDeviceId}
-					cameraDeviceId={cameraDeviceId}
-				/>
-			</EnsureOnline>
-		</EnsurePermissions>
+				<EnsureOnline
+					fallback={
+						<div className="grid h-full place-items-center">
+							<div>
+								<h1 className="flex items-center gap-3 text-3xl font-black">
+									<Icon type="SignalSlashIcon" />
+									You are offline
+								</h1>
+							</div>
+						</div>
+					}
+				>
+					<RoomPreparation
+						micDeviceId={micDeviceId}
+						cameraDeviceId={cameraDeviceId}
+					/>
+				</EnsureOnline>
+			</EnsurePermissions>
+		</EnsureUsername>
 	)
 }
 

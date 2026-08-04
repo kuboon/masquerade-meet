@@ -4,7 +4,6 @@ import { json } from '@remix-run/cloudflare'
 import { useNavigate, useParams, useSearchParams } from '@remix-run/react'
 import { useObservableAsValue } from 'partytracks/react'
 import { useEffect } from 'react'
-import invariant from 'tiny-invariant'
 import { AudioIndicator } from '~/components/AudioIndicator'
 import { Button } from '~/components/Button'
 import { CharacterAvatar } from '~/components/CharacterAvatar'
@@ -23,8 +22,9 @@ import getUsername from '~/utils/getUsername.server'
 import { minimumParticipants } from '~/utils/masquerade'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+	// May be null: the layout above shows the name form in that case and this
+	// route never renders.
 	const username = await getUsername(request)
-	invariant(username)
 	return json({ username, callsAppId: context.env.CALLS_APP_ID })
 }
 

@@ -11,8 +11,9 @@ test('two users meet in disguise and are then revealed', async ({
 	// the first person into the room becomes its host
 	const host = await context.newPage()
 	await host.goto(location)
-	await host.getByLabel('Enter your display name').fill('kevin')
-	await host.getByLabel('Enter your display name').press('Enter')
+	// The name is asked for in the room now, not on a page of its own.
+	await host.getByLabel('名前').fill('kevin')
+	await host.getByRole('button', { name: '参加する' }).click()
 	await expect(
 		host.getByRole('button', { name: '準備完了', exact: true })
 	).toBeVisible()

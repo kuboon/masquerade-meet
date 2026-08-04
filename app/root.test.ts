@@ -1,7 +1,6 @@
 import { Crypto } from '@peculiar/webcrypto'
 import { describe, expect, it, vi } from 'vitest'
 import { loader } from './root'
-import { commitSession, getSession } from './session'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from './utils/constants'
 
 vi.stubGlobal('crypto', new Crypto())
@@ -125,45 +124,15 @@ describe('root loader', () => {
 		expect(response?.status).not.equals(302)
 	})
 
-	it('should redirect to /set-username if CF_Authorization Cookie is missing', async () => {
+	it('lets a nameless visitor through', async () => {
+		// The display name is asked for in the lobby now, so arriving without
+		// one is the normal case rather than something to redirect away from.
 		const request = new Request('https://orange.cloudflare.dev', {})
-		let redirect = null
-		try {
-			const response = await loader({
-				request,
-				context: { env: {} } as any,
-				params: {},
-			})
-			expect(response.status).not.equals(302)
-		} catch (r) {
-			if (!(r instanceof Response)) throw r
-			redirect = r
-		}
-		expect(redirect?.status).toBe(302)
-	})
-
-	it('should NOT redirect to /set-username if CF_Authorization Cookie is missing but username is set', async () => {
-		const session = await getSession()
-
-		session.set('username', 'Kevin')
-
-		const [Cookie] = await commitSession(session).then((c) => c.split(';'))
-
-		const request = new Request('https://orange.cloudflare.dev', {
-			headers: { Cookie: Cookie },
+		const response = await loader({
+			request,
+			context: { env: {} } as any,
+			params: {},
 		})
-		let redirect = null
-		try {
-			const response = await loader({
-				request,
-				context: { env: {} } as any,
-				params: {},
-			})
-			expect(response.status).not.equals(302)
-		} catch (r) {
-			if (!(r instanceof Response)) throw r
-			redirect = r
-		}
-		expect(redirect?.status).not.equals(302)
+		expect(response.status).not.equals(302)
 	})
 })

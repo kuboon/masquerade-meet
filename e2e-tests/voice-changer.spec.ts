@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test'
 test.describe('voice changer worklet', () => {
 	test.beforeEach(async ({ page }) => {
 		// any page on the origin will do; we only need the worklet URL to resolve
-		await page.goto('/set-username')
+		await page.goto('/')
 	})
 
 	async function analyse(
