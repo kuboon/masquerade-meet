@@ -23,6 +23,7 @@ import {
 	canStartMeeting,
 	nextHost,
 	restartParticipant,
+	shuffled,
 } from '~/utils/masquerade'
 
 import { eq, sql } from 'drizzle-orm'
@@ -54,6 +55,7 @@ const PHASE_KEY = 'masquerade:phase'
 const REVEAL_AT_KEY = 'masquerade:revealAt'
 const HOST_KEY = 'masquerade:hostId'
 const CHARACTER_SET_KEY = 'masquerade:characterSetId'
+const SEATS_KEY = 'masquerade:seats'
 
 /** Long enough for a real name, short enough not to break the tiles. */
 const MAX_NAME_LENGTH = 40
@@ -150,6 +152,11 @@ export class ChatRoom extends Server<Env> {
 
 		// store the user's data in storage
 		await this.ctx.storage.put(`session-${connection.id}`, user)
+		// Somebody walking into a meeting already in progress needs a seat of
+		// their own. Everyone else is seated when the meeting starts.
+		if ((await this.getMasqueradeState()).phase !== 'lobby') {
+			await this.takeSeat(connection.id)
+		}
 		// the first person through the door runs the room
 		if ((await this.ctx.storage.get<string>(HOST_KEY)) === undefined) {
 			await this.ctx.storage.put(HOST_KEY, connection.id)
@@ -279,7 +286,25 @@ export class ChatRoom extends Server<Env> {
 			characterSetId:
 				(await this.ctx.storage.get<string>(CHARACTER_SET_KEY)) ??
 				defaultCharacterSetId,
+			seats: await this.getSeats(),
 		}
+	}
+
+	async getSeats(): Promise<string[]> {
+		return (await this.ctx.storage.get<string[]>(SEATS_KEY)) ?? []
+	}
+
+	/**
+	 * Puts a latecomer at the end of the seating chart.
+	 *
+	 * Only appends, never reorders: a returning participant is recognised by
+	 * the same connection id and finds their old seat still there, which is
+	 * the point of seating people at all.
+	 */
+	private async takeSeat(connectionId: string) {
+		const seats = await this.getSeats()
+		if (seats.includes(connectionId)) return
+		await this.ctx.storage.put(SEATS_KEY, [...seats, connectionId])
 	}
 
 	/**
@@ -613,6 +638,15 @@ export class ChatRoom extends Server<Env> {
 						} satisfies StoredUser)
 					}
 
+					// Where everybody sits, settled once so that every screen in
+					// the room looks the same. Shuffled, because seating people
+					// in the order they arrived would tell the room something it
+					// is not supposed to know.
+					await this.ctx.storage.put(
+						SEATS_KEY,
+						shuffled(users.map((u) => u.id))
+					)
+
 					await this.ctx.storage.put(
 						PHASE_KEY,
 						'masquerade' satisfies RoomPhase
@@ -665,7 +699,30 @@ export class ChatRoom extends Server<Env> {
 					}
 					await this.ctx.storage.put(PHASE_KEY, 'lobby' satisfies RoomPhase)
 					await this.ctx.storage.delete(REVEAL_AT_KEY)
+					// A new round is dealt new faces, and gets a new seating
+					// chart with them.
+					await this.ctx.storage.delete(SEATS_KEY)
 					log({ eventName: 'meetingRestarted', meetingId })
+					await this.broadcastRoomState()
+					break
+				}
+				case 'removeSeat': {
+					const hostId = await this.ensureHost()
+					if (hostId !== connection.id) break
+					// Only an empty one. A seat with somebody in it is not the
+					// host's to clear, and an empty seat is only empty until its
+					// owner reloads their way back into it — so this is a
+					// decision, not a tidy-up the room should make on its own.
+					const stillHere = await this.ctx.storage.get<StoredUser>(
+						`session-${data.seatId}`
+					)
+					if (stillHere) break
+					const seats = await this.getSeats()
+					if (!seats.includes(data.seatId)) break
+					await this.ctx.storage.put(
+						SEATS_KEY,
+						seats.filter((seat) => seat !== data.seatId)
+					)
 					await this.broadcastRoomState()
 					break
 				}

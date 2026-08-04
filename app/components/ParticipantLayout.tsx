@@ -2,15 +2,16 @@ import { createGrid } from 'good-grid'
 import { useGridDimensions } from 'good-grid/react'
 import { useId, useRef } from 'react'
 import { Flipper } from 'react-flip-toolkit'
-import type { User } from '~/types/Messages'
+import type { Tile } from '~/utils/stage'
 import { Participant } from './Participant'
+import { VacantSeat } from './VacantSeat'
 
 export function ParticipantLayout({
-	users,
+	tiles,
 	gap,
 	aspectRatio,
 }: {
-	users: User[]
+	tiles: Tile[]
 	gap: number
 	aspectRatio: string
 }) {
@@ -22,19 +23,19 @@ export function ParticipantLayout({
 
 	const { width, height, getPosition } = createGrid({
 		dimensions,
-		count: users.length,
+		count: tiles.length,
 		aspectRatio,
 		gap,
 	})
 
 	const id = useId()
 
-	if (users.length === 0) {
-		return null
-	}
-
+	// No empty check here on purpose: good-grid's useGridDimensions throws if
+	// the element it was handed never renders, so returning null on an empty
+	// grid takes the whole room down with it. Callers keep this out of the
+	// tree instead.
 	return (
-		<Flipper flipKey={id + users.length}>
+		<Flipper flipKey={id + tiles.length}>
 			<div
 				className="absolute inset-[--gap] h-[--height] w-[--width] isolate flex flex-wrap justify-around"
 				ref={$el}
@@ -46,21 +47,20 @@ export function ParticipantLayout({
 					} as any
 				}
 			>
-				{users.map((user, i) => {
+				{tiles.map((tile, i) => {
 					const { top, left } = getPosition(i)
-					return (
-						<Participant
-							style={{
-								width,
-								height,
-								top,
-								left,
-								position: 'absolute',
-								transition: '0.4s all',
-							}}
-							key={user.id}
-							user={user}
-						/>
+					const style = {
+						width,
+						height,
+						top,
+						left,
+						position: 'absolute' as const,
+						transition: '0.4s all',
+					}
+					return tile.user ? (
+						<Participant style={style} key={tile.id} user={tile.user} />
+					) : (
+						<VacantSeat style={style} key={tile.id} seatId={tile.id} />
 					)
 				})}
 			</div>

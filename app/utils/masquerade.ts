@@ -95,6 +95,22 @@ export function restartParticipant<
 }
 
 /**
+ * A copy in a random order. Fisher-Yates, with the source of randomness
+ * injectable so the outcome can be pinned down in a test.
+ */
+export function shuffled<T>(
+	items: T[],
+	random: () => number = Math.random
+): T[] {
+	const order = [...items]
+	for (let i = order.length - 1; i > 0; i--) {
+		const j = Math.floor(random() * (i + 1))
+		;[order[i], order[j]] = [order[j], order[i]]
+	}
+	return order
+}
+
+/**
  * Turns everyone's preferred character into an assignment nobody shares.
  *
  * People pick freely in the lobby — being told "already taken" while
@@ -111,13 +127,9 @@ export function assignCharacters(
 	characterIds: string[],
 	random: () => number = Math.random
 ): Map<string, string> {
-	const order = [...participants]
-	// Fisher-Yates: without it the map's insertion order would decide every
-	// clash, which is "whoever connected first" wearing a disguise.
-	for (let i = order.length - 1; i > 0; i--) {
-		const j = Math.floor(random() * (i + 1))
-		;[order[i], order[j]] = [order[j], order[i]]
-	}
+	// Without the shuffle the insertion order would decide every clash, which
+	// is "whoever connected first" wearing a disguise.
+	const order = shuffled(participants, random)
 
 	const remaining = new Set(characterIds)
 	const assigned = new Map<string, string>()

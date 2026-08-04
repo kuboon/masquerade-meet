@@ -6,8 +6,8 @@ import {
 	useParams,
 	useSearchParams,
 } from '@remix-run/react'
-import { useEffect, useRef, useState } from 'react'
-import { useMount, useWindowSize } from 'react-use'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMount } from 'react-use'
 import { AiButton } from '~/components/AiButton'
 import { ButtonLink } from '~/components/Button'
 import { CameraButton } from '~/components/CameraButton'
@@ -33,12 +33,12 @@ import useIsSpeaking from '~/hooks/useIsSpeaking'
 import { useRoomContext } from '~/hooks/useRoomContext'
 import { useShowDebugInfoShortcut } from '~/hooks/useShowDebugInfoShortcut'
 import useSounds from '~/hooks/useSounds'
-import useStageManager from '~/hooks/useStageManager'
 import useTextChat from '~/hooks/useTextChat'
 import { useUserJoinLeaveToasts } from '~/hooks/useUserJoinLeaveToasts'
 import { dashboardLogsLink } from '~/utils/dashboardLogsLink'
 import getUsername from '~/utils/getUsername.server'
 import isNonNullable from '~/utils/isNonNullable'
+import { screenshareTile, stageTiles } from '~/utils/stage'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const username = await getUsername(request)
@@ -107,6 +107,7 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 		pushedTracks,
 		showDebugInfo,
 		pinnedTileIds,
+		setPinnedTileIds,
 		room,
 		masquerade,
 		e2eeSafetyNumber,
@@ -159,40 +160,42 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 	useSounds(otherUsers)
 	useUserJoinLeaveToasts(otherUsers)
 
-	const { width } = useWindowSize()
-
-	const someScreenshare =
-		otherUsers.some((u) => u.tracks.screenShareEnabled) ||
-		Boolean(identity?.tracks.screenShareEnabled)
-	// While everyone is masked the tiles are still pictures, so there is nothing
-	// to save by leaving people out — and in a game of who-is-who, the whole
-	// table is the point. Live video is another matter, and so is a
-	// screenshare, which wants the room to itself; both keep the limits that
-	// make a call watchable.
-	const stageLimit = someScreenshare
-		? 5
-		: masquerade.revealed
-			? width < 600
-				? 2
-				: 9
-			: masquerade.characterSet.characters.length
-
-	const { recordActivity, actorsOnStage } = useStageManager(
-		otherUsers,
-		stageLimit,
-		identity
+	// The stage is the room's seating chart, in the room's order, with everybody
+	// on it. No sorting by who spoke last and no limit: a tile that moves is a
+	// tile you have to find again, and in a game of who-is-who that is half the
+	// information on the screen. Everyone sees the same thing, and it survives
+	// the reveal, a dropped connection and a reload alike.
+	const tiles = useMemo(
+		() => stageTiles(masquerade.seats, users),
+		[masquerade.seats, users]
 	)
 
+	const screenshares = useMemo(
+		() =>
+			users
+				.filter((u) => u.joined && u.tracks.screenShareEnabled)
+				.map(screenshareTile),
+		[users]
+	)
+
+	// A screenshare is why everybody is looking at the screen, so it takes the
+	// big half without being asked — once. Pinning it on every render would
+	// undo anyone who put it back.
+	const autoPinned = useRef(new Set<string>())
 	useEffect(() => {
-		otherUsers.forEach((u) => {
-			if (u.speaking || u.raisedHand) recordActivity(u)
-		})
-	}, [otherUsers, recordActivity])
+		const fresh = screenshares
+			.map((s) => s.id)
+			.filter((id) => !autoPinned.current.has(id))
+		if (fresh.length === 0) return
+		fresh.forEach((id) => autoPinned.current.add(id))
+		setPinnedTileIds((ids) => [...ids, ...fresh])
+	}, [screenshares, setPinnedTileIds])
 
-	const pinnedActors = actorsOnStage.filter((u) => pinnedTileIds.includes(u.id))
-	const unpinnedActors = actorsOnStage.filter(
-		(u) => !pinnedTileIds.includes(u.id)
-	)
+	const pinnedTiles = [
+		...screenshares.map((user) => ({ id: user.id, user })),
+		...tiles.filter((t) => pinnedTileIds.includes(t.id)),
+	]
+	const unpinnedTiles = tiles.filter((t) => !pinnedTileIds.includes(t.id))
 
 	const gridGap = 12
 	const dispatchToast = useDispatchToast()
@@ -216,22 +219,24 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 						style={{ '--gap': gridGap + 'px' } as any}
 						className="absolute inset-0 flex isolate p-[--gap] gap-[--gap]"
 					>
-						{pinnedActors.length > 0 && (
+						{pinnedTiles.length > 0 && (
 							<div className="flex-grow-[5] overflow-hidden relative">
 								<ParticipantLayout
-									users={pinnedActors.filter(isNonNullable)}
+									tiles={pinnedTiles}
 									gap={gridGap}
 									aspectRatio="16:9"
 								/>
 							</div>
 						)}
-						<div className="flex-grow overflow-hidden relative">
-							<ParticipantLayout
-								users={unpinnedActors.filter(isNonNullable)}
-								gap={gridGap}
-								aspectRatio="4:3"
-							/>
-						</div>
+						{unpinnedTiles.length > 0 && (
+							<div className="flex-grow overflow-hidden relative">
+								<ParticipantLayout
+									tiles={unpinnedTiles}
+									gap={gridGap}
+									aspectRatio="4:3"
+								/>
+							</div>
+						)}
 					</div>
 					{masquerade.countdown !== undefined && (
 						<RevealCountdown seconds={masquerade.countdown} />
@@ -257,7 +262,7 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 					<Toast.Viewport className="absolute bottom-0 right-0" />
 				</div>
 				<div className="flex flex-wrap items-center justify-center gap-2 p-2 text-sm md:gap-4 md:p-5 md:text-base">
-					{hasAiCredentials && <AiButton recordActivity={recordActivity} />}
+					{hasAiCredentials && <AiButton />}
 					<MicButton warnWhenSpeakingWhileMuted />
 					{masquerade.revealed && <CameraButton />}
 					<ScreenshareButton />
