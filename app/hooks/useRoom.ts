@@ -57,7 +57,6 @@ export default function useRoom({
 		},
 		ai: { enabled: false },
 	})
-	const [characterTaken, setCharacterTaken] = useState<string>()
 
 	const userLeftFunctionRef = useRef(() => {})
 
@@ -96,9 +95,6 @@ export default function useRoom({
 					break
 				case 'muteMic':
 					userMedia.turnMicOff()
-					break
-				case 'characterTaken':
-					setCharacterTaken(message.characterId)
 					break
 				case 'partyserver-pong':
 				case 'e2eeMlsMessage':
@@ -157,7 +153,5 @@ export default function useRoom({
 		websocket,
 		roomState,
 		send,
-		characterTaken,
-		clearCharacterTaken: useCallback(() => setCharacterTaken(undefined), []),
 	}
 }

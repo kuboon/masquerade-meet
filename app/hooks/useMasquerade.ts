@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
 import { getCharacter, getCharacterSet } from '~/utils/characterSets'
 import { neutralVoice } from '~/utils/characters'
@@ -90,15 +90,6 @@ export default function useMasquerade({
 	}, [revealed, turnCameraOn, turnCameraOff])
 
 	const participants = roomState.users
-	const takenCharacterIds = useMemo(
-		() =>
-			new Set(
-				participants
-					.filter((u) => u.id !== identity?.id && u.characterId)
-					.map((u) => u.characterId!)
-			),
-		[participants, identity?.id]
-	)
 
 	const everyoneReady =
 		participants.length > 0 && participants.every((u) => u.ready)
@@ -122,10 +113,9 @@ export default function useMasquerade({
 			[characterSet]
 		),
 		participants,
-		takenCharacterIds,
 		everyoneReady,
 		/** the same rule the room enforces, so the button cannot over-promise */
-		canStart: canStartMeeting(participants),
+		canStart: canStartMeeting(participants, characterSet.characters.length),
 		readyCount: participants.filter((u) => u.ready).length,
 		/** the meeting is under way — the lobby should hand over to the room */
 		meetingStarted: phase !== 'lobby',

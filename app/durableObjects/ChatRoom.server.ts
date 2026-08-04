@@ -18,7 +18,7 @@ import {
 } from '~/utils/characterSets'
 import type { CharacterSet } from '~/utils/characters'
 import getUsername from '~/utils/getUsername.server'
-import { canStartMeeting } from '~/utils/masquerade'
+import { assignCharacters, canStartMeeting } from '~/utils/masquerade'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -114,7 +114,7 @@ export class ChatRoom extends Server<Env> {
 				// surfaces once the room has been revealed.
 				realName: username,
 				name: username,
-				characterId: await this.pickFreeCharacterId(characterSet),
+				characterId: await this.pickCharacterPreference(characterSet),
 				ready: false,
 				joined: false,
 				raisedHand: false,
@@ -294,11 +294,19 @@ export class ChatRoom extends Server<Env> {
 		return taken
 	}
 
-	async pickFreeCharacterId(set: CharacterSet): Promise<string | undefined> {
+	/**
+	 * The character a new arrival starts out wanting.
+	 *
+	 * Prefers one nobody else has picked so a room that nobody touches still
+	 * ends up varied, but falls back to any of them: preferences are allowed
+	 * to clash, and somebody arriving late should not be left with nothing
+	 * selected.
+	 */
+	async pickCharacterPreference(set: CharacterSet): Promise<string> {
 		const taken = await this.getTakenCharacterIds()
-		const available = set.characters.filter((c) => !taken.has(c.id))
-		if (available.length === 0) return undefined
-		return available[Math.floor(Math.random() * available.length)].id
+		const free = set.characters.filter((c) => !taken.has(c.id))
+		const pool = free.length > 0 ? free : set.characters
+		return pool[Math.floor(Math.random() * pool.length)].id
 	}
 
 	/**
@@ -477,15 +485,8 @@ export class ChatRoom extends Server<Env> {
 					const character = getCharacter(characterSet, data.characterId)
 					if (!character) break
 
-					const taken = await this.getTakenCharacterIds(connection.id)
-					if (taken.has(character.id)) {
-						this.sendMessage(connection, {
-							type: 'characterTaken',
-							characterId: character.id,
-						})
-						break
-					}
-
+					// No collision check: in the lobby a character is a wish, not
+					// a claim. Clashes are drawn for when the meeting starts.
 					await this.ctx.storage.put(`session-${connection.id}`, {
 						...stored,
 						characterId: character.id,
@@ -514,10 +515,27 @@ export class ChatRoom extends Server<Env> {
 					if (phase !== 'lobby') break
 
 					const users = [...(await this.getUsers()).values()]
+					const characterSet = getCharacterSet(
+						await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+					)
 					// "everyone is here" is the whole point — don't start early,
 					// and don't start a masquerade the host would be attending
-					// alone.
-					if (!canStartMeeting(users)) break
+					// alone. Nor one where somebody has no face to wear.
+					if (!canStartMeeting(users, characterSet.characters.length)) break
+
+					// Everyone picked freely, so two people may want the same
+					// character. Settle it here, in one draw, before anyone is
+					// hidden behind anything.
+					const assigned = assignCharacters(
+						users,
+						characterSet.characters.map((c) => c.id)
+					)
+					for (const user of users) {
+						await this.ctx.storage.put(`session-${user.id}`, {
+							...user,
+							characterId: assigned.get(user.id),
+						} satisfies StoredUser)
+					}
 
 					await this.ctx.storage.put(
 						PHASE_KEY,
