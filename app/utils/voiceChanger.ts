@@ -17,14 +17,48 @@ export function setVoiceParams(params: VoiceParams) {
 	voiceParams$.next(params)
 }
 
-const WORKLET_URL = '/voice/voice-changer-worklet.js'
+export const VOICE_WORKLET_URL = '/voice/voice-changer-worklet.js'
 // Short enough to feel instant, long enough to avoid a click.
 const RAMP_SECONDS = 0.03
 
-interface ToneNodes {
+export interface ToneNodes {
 	low: BiquadFilterNode
 	mid: BiquadFilterNode
 	high: BiquadFilterNode
+}
+
+/**
+ * The post pitch-shift tone stack: a fixed lowshelf, a sweepable peak, and a
+ * fixed highshelf. Exported so the tuner can build the same chain — if the
+ * two ever drift, what a developer dials in stops being what anyone hears.
+ */
+export function createToneNodes(context: BaseAudioContext): ToneNodes {
+	const low = context.createBiquadFilter()
+	low.type = 'lowshelf'
+	low.frequency.value = 320
+	low.gain.value = 0
+
+	const mid = context.createBiquadFilter()
+	mid.type = 'peaking'
+	mid.frequency.value = neutralVoice.tone.midFreq
+	mid.Q.value = neutralVoice.tone.midQ
+	mid.gain.value = 0
+
+	const high = context.createBiquadFilter()
+	high.type = 'highshelf'
+	high.frequency.value = 3200
+	high.gain.value = 0
+
+	return { low, mid, high }
+}
+
+export async function createVoiceChangerNode(context: BaseAudioContext) {
+	await context.audioWorklet.addModule(VOICE_WORKLET_URL)
+	return new AudioWorkletNode(context, 'voice-changer', {
+		numberOfInputs: 1,
+		numberOfOutputs: 1,
+		outputChannelCount: [1],
+	})
 }
 
 function ramp(param: AudioParam, value: number, now: number) {
@@ -32,7 +66,7 @@ function ramp(param: AudioParam, value: number, now: number) {
 	param.setTargetAtTime(value, now, RAMP_SECONDS)
 }
 
-function applyParams(
+export function applyVoiceParams(
 	context: BaseAudioContext,
 	node: AudioWorkletNode,
 	toneNodes: ToneNodes,
@@ -69,21 +103,7 @@ function voiceChangerTransform(
 		)
 		const destination = context.createMediaStreamDestination()
 
-		const low = context.createBiquadFilter()
-		low.type = 'lowshelf'
-		low.frequency.value = 320
-		low.gain.value = 0
-
-		const mid = context.createBiquadFilter()
-		mid.type = 'peaking'
-		mid.frequency.value = neutralVoice.tone.midFreq
-		mid.Q.value = neutralVoice.tone.midQ
-		mid.gain.value = 0
-
-		const high = context.createBiquadFilter()
-		high.type = 'highshelf'
-		high.frequency.value = 3200
-		high.gain.value = 0
+		const { low, mid, high } = createToneNodes(context)
 
 		let workletNode: AudioWorkletNode | undefined
 		let paramsSubscription: Subscription | undefined
@@ -93,15 +113,10 @@ function voiceChangerTransform(
 		// during a user gesture.
 		context.resume().catch(() => {})
 
-		context.audioWorklet
-			.addModule(WORKLET_URL)
-			.then(() => {
+		createVoiceChangerNode(context)
+			.then((node) => {
 				if (torndown || context.state === 'closed') return
-				workletNode = new AudioWorkletNode(context, 'voice-changer', {
-					numberOfInputs: 1,
-					numberOfOutputs: 1,
-					outputChannelCount: [1],
-				})
+				workletNode = node
 				source
 					.connect(workletNode)
 					.connect(low)
@@ -109,7 +124,7 @@ function voiceChangerTransform(
 					.connect(high)
 					.connect(destination)
 				paramsSubscription = voiceParams$.subscribe((params) =>
-					applyParams(context, workletNode!, { low, mid, high }, params)
+					applyVoiceParams(context, workletNode!, { low, mid, high }, params)
 				)
 			})
 			.catch((error) => {
