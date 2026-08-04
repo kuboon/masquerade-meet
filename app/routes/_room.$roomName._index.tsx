@@ -63,6 +63,7 @@ export default function Lobby() {
 
 	const {
 		character,
+		characterSet,
 		participants,
 		takenCharacterIds,
 		everyoneReady,
@@ -150,7 +151,7 @@ export default function Lobby() {
 						<p className="text-sm text-zinc-500 dark:text-zinc-400">
 							{character
 								? character.tagline
-								: '空いているキャラクターがありません。1ルームの定員は15人です。'}
+								: `空いているキャラクターがありません。1ルームの定員は${characterSet.characters.length}人です。`}
 						</p>
 					</div>
 				</div>
@@ -165,6 +166,7 @@ export default function Lobby() {
 						)}
 					</div>
 					<CharacterPicker
+						characters={characterSet.characters}
 						selectedId={character?.id}
 						takenIds={takenCharacterIds}
 						disabled={ready}

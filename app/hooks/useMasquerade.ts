@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
-import { getCharacter, neutralVoice } from '~/utils/characters'
+import { getCharacter, getCharacterSet } from '~/utils/characterSets'
+import { neutralVoice } from '~/utils/characters'
 import { canStartMeeting } from '~/utils/masquerade'
 import { setVoiceParams } from '~/utils/voiceChanger'
 import type useRoom from './useRoom'
@@ -25,7 +26,8 @@ export default function useMasquerade({
 	const { phase, hostId, revealAt, serverNow } = roomState.masquerade
 
 	const isHost = Boolean(identity && hostId === identity.id)
-	const character = getCharacter(identity?.characterId)
+	const characterSet = getCharacterSet()
+	const character = getCharacter(characterSet, identity?.characterId)
 
 	// Translate the server's deadline onto this machine's clock. Only the
 	// interval between revealAt and serverNow matters, so a wrong system clock
@@ -108,6 +110,16 @@ export default function useMasquerade({
 		isHost,
 		hostId,
 		character,
+		/** the roster this room is hiding behind */
+		characterSet,
+		/**
+		 * Resolve a character within this room's set. Handed out so components
+		 * deeper in the tree do not have to be passed the set itself.
+		 */
+		getCharacter: useCallback(
+			(characterId?: string) => getCharacter(characterSet, characterId),
+			[characterSet]
+		),
 		participants,
 		takenCharacterIds,
 		everyoneReady,

@@ -1,8 +1,10 @@
-import { characters } from '~/utils/characters'
+import type { Character } from '~/utils/characters'
 import { cn } from '~/utils/style'
 import { CharacterAvatar } from './CharacterAvatar'
 
 interface Props {
+	/** the roster of the room's character set */
+	characters: Character[]
 	selectedId?: string
 	/** characters already claimed by somebody else */
 	takenIds: Set<string>
@@ -11,6 +13,7 @@ interface Props {
 }
 
 export function CharacterPicker({
+	characters,
 	selectedId,
 	takenIds,
 	disabled = false,

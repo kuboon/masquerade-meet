@@ -10,7 +10,6 @@ import { screenshareSuffix } from '~/hooks/useStageManager'
 import { useUserMetadata } from '~/hooks/useUserMetadata'
 import { useVideoDimensions } from '~/hooks/useVideoDimensions'
 import type { User } from '~/types/Messages'
-import { getCharacter } from '~/utils/characters'
 import isNonNullable from '~/utils/isNonNullable'
 import populateTraceLink from '~/utils/populateTraceLink'
 import { ewma } from '~/utils/rxjs/ewma'
@@ -140,7 +139,7 @@ export const Participant = forwardRef<
 	// Once revealed we fall back to the usual photo/initial placeholder.
 	const character = masquerade.revealed
 		? undefined
-		: getCharacter(user.characterId)
+		: masquerade.getCharacter(user.characterId)
 
 	return (
 		<div

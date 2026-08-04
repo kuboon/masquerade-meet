@@ -10,7 +10,8 @@ import type {
 import { assertError } from '~/utils/assertError'
 import assertNever from '~/utils/assertNever'
 import { assertNonNullable } from '~/utils/assertNonNullable'
-import { characters, getCharacter } from '~/utils/characters'
+import { getCharacter, getCharacterSet } from '~/utils/characterSets'
+import type { CharacterSet } from '~/utils/characters'
 import getUsername from '~/utils/getUsername.server'
 import { canStartMeeting } from '~/utils/masquerade'
 
@@ -105,7 +106,7 @@ export class ChatRoom extends Server<Env> {
 				// surfaces once the room has been revealed.
 				realName: username,
 				name: username,
-				characterId: await this.pickFreeCharacterId(),
+				characterId: await this.pickFreeCharacterId(getCharacterSet()),
 				ready: false,
 				joined: false,
 				raisedHand: false,
@@ -260,9 +261,9 @@ export class ChatRoom extends Server<Env> {
 		return taken
 	}
 
-	async pickFreeCharacterId(): Promise<string | undefined> {
+	async pickFreeCharacterId(set: CharacterSet): Promise<string | undefined> {
 		const taken = await this.getTakenCharacterIds()
-		const available = characters.filter((c) => !taken.has(c.id))
+		const available = set.characters.filter((c) => !taken.has(c.id))
 		if (available.length === 0) return undefined
 		return available[Math.floor(Math.random() * available.length)].id
 	}
@@ -271,7 +272,7 @@ export class ChatRoom extends Server<Env> {
 	 * Strips everything the other participants aren't supposed to know yet.
 	 * Real names are swapped for character names until the room is revealed.
 	 */
-	async getPublicUsers(phase: RoomPhase): Promise<User[]> {
+	async getPublicUsers(phase: RoomPhase, set: CharacterSet): Promise<User[]> {
 		const revealed = phase === 'revealed'
 		const users: User[] = []
 		for (const stored of (await this.getUsers()).values()) {
@@ -280,7 +281,7 @@ export class ChatRoom extends Server<Env> {
 				...rest,
 				name: revealed
 					? realName
-					: (getCharacter(stored.characterId)?.name ?? '???'),
+					: (getCharacter(set, stored.characterId)?.name ?? '???'),
 			})
 		}
 		return users
@@ -315,6 +316,7 @@ export class ChatRoom extends Server<Env> {
 			(await this.ctx.storage.get<string>('ai:trackName')) ?? undefined
 		await this.ensureHost()
 		const masquerade = await this.getMasqueradeState()
+		const characterSet = getCharacterSet()
 		const roomState = {
 			type: 'roomState',
 			state: {
@@ -330,7 +332,7 @@ export class ChatRoom extends Server<Env> {
 				},
 				meetingId,
 				users: [
-					...(await this.getPublicUsers(masquerade.phase)),
+					...(await this.getPublicUsers(masquerade.phase, characterSet)),
 					...(aiEnabled
 						? [
 								{
@@ -436,7 +438,7 @@ export class ChatRoom extends Server<Env> {
 						`session-${connection.id}`
 					)
 					if (!stored) break
-					const character = getCharacter(data.characterId)
+					const character = getCharacter(getCharacterSet(), data.characterId)
 					if (!character) break
 
 					const taken = await this.getTakenCharacterIds(connection.id)
