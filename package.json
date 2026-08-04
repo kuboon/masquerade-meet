@@ -28,7 +28,8 @@
 		"db:studio:local": "LOCAL_DB_PATH=$(find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print -quit) drizzle-kit studio",
 		"db:studio:development": "source .drizzle.env && DB_ID='6b0eceef-c836-4ba7-aac2-fa9b6f702e3b' drizzle-kit studio",
 		"db:studio:staging": "source .drizzle.env && DB_ID='e9091e61-7e0a-4719-b9cb-3e1c3e95e9fa' drizzle-kit studio",
-		"db:studio:production": "source .drizzle.env && DB_ID='125a3008-0a8a-4ada-a829-7d2eb2ef15bc' drizzle-kit studio"
+		"db:studio:production": "source .drizzle.env && DB_ID='125a3008-0a8a-4ada-a829-7d2eb2ef15bc' drizzle-kit studio",
+		"export:character-svgs": "esbuild scripts/exportCharacterSvgs.tsx --bundle --platform=node --format=cjs --tsconfig=tsconfig.json --outfile=node_modules/.cache/exportCharacterSvgs.cjs && node node_modules/.cache/exportCharacterSvgs.cjs"
 	},
 	"dependencies": {
 		"@heroicons/react": "^2.1.5",
@@ -80,6 +81,7 @@
 		"better-sqlite3": "^11.3.0",
 		"del-cli": "^5.1.0",
 		"drizzle-kit": "^0.24.2",
+		"esbuild": "^0.23.0",
 		"eslint": "^8.56.0",
 		"git-format-staged": "^3.1.1",
 		"msw": "^2.3.5",
