@@ -41,8 +41,10 @@ export function EnsurePermissions(props: EnsurePermissionsProps) {
 		return (
 			<div className="grid min-h-full items-center">
 				<div className="mx-auto space-y-2 max-w-80">
-					<h1 className="text-2xl font-bold">権限が拒否されました</h1>
-					<p>ブラウザの設定からマイクとカメラの権限を許可し直してください。</p>
+					<h1 className="text-2xl font-bold">マイクの権限が必要です</h1>
+					<p>
+						ブラウザの設定からマイクの権限を許可し直して、再読み込みしてください。カメラは任意です。
+					</p>
 				</div>
 			</div>
 		)
@@ -53,23 +55,32 @@ export function EnsurePermissions(props: EnsurePermissionsProps) {
 			<div className="grid min-h-full items-center">
 				<div className="mx-auto max-w-80">
 					<p className="mb-8">
-						マスカレードを使うには、カメラとマイクの権限が必要です。次の操作でブラウザが許可を求めます。
+						マスカレードを使うにはマイクの権限が必要です。次の操作でブラウザが許可を求めます。
 					</p>
 					<p className="mb-8 text-sm text-zinc-500 dark:text-zinc-400">
-						カメラは変装が解けるまで一度も配信されません。声もこのブラウザの中で変換してから送ります。
+						カメラは任意です。断ってもカメラのない端末でも参加できます。
+						許可した場合でも、変装が解けるまで一度も配信されません。
+						声はこのブラウザの中で変換してから送ります。
 					</p>
 					<Button
 						onClick={() => {
+							// Ask for both at once so there is only one prompt in the
+							// common case, but fall back to the microphone alone. A
+							// camera that is refused — or missing entirely — must not
+							// keep somebody out of a room where the whole point is
+							// that their face is never published.
 							navigator.mediaDevices
-								.getUserMedia({
-									video: true,
-									audio: true,
-								})
+								.getUserMedia({ video: true, audio: true })
+								.catch(() =>
+									navigator.mediaDevices.getUserMedia({ audio: true })
+								)
 								.then((ms) => {
 									if (mountedRef.current) setPermissionState('granted')
-									const micId = ms.getAudioTracks()[0].getSettings().deviceId
+									const micId = ms.getAudioTracks()[0]?.getSettings().deviceId
 									if (micId) props.onMicSelected(micId)
-									const cameraId = ms.getVideoTracks()[0].getSettings().deviceId
+									const cameraId = ms
+										.getVideoTracks()[0]
+										?.getSettings().deviceId
 									if (cameraId) props.onCameraSelected(cameraId)
 									ms.getTracks().forEach((t) => t.stop())
 								})

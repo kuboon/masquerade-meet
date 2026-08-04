@@ -26,3 +26,28 @@ test('goes straight into the room without asking for a name first', async ({
 		page.getByRole('button', { name: '権限を許可する' })
 	).toBeVisible()
 })
+
+test('lets someone in who has no camera', async ({ page }) => {
+	// Refuse anything asking for video, the way a machine with no camera —
+	// or somebody who declines it — behaves. The microphone still works.
+	await page.addInitScript(() => {
+		const original = navigator.mediaDevices.getUserMedia.bind(
+			navigator.mediaDevices
+		)
+		navigator.mediaDevices.getUserMedia = (constraints) =>
+			constraints?.video
+				? Promise.reject(new DOMException('no camera', 'NotFoundError'))
+				: original(constraints)
+	})
+
+	await page.goto('/')
+	await page.getByRole('button', { name: 'ルームを作る' }).click()
+	await page.getByRole('button', { name: '権限を許可する' }).click()
+
+	await expect(
+		page.getByRole('button', { name: '権限を許可する' })
+	).toHaveCount(0)
+	await expect(
+		page.getByRole('heading', { name: 'マイクの権限が必要です' })
+	).toHaveCount(0)
+})
