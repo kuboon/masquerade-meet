@@ -3,7 +3,7 @@ import { useObservableAsValue } from 'partytracks/react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '~/components/Button'
 import { StillImagePicker } from '~/components/StillImagePicker'
-import {
+import useUserMedia, {
 	allowStillImage,
 	camera,
 	outgoingVideoTrack$,
@@ -51,6 +51,10 @@ export default function DevStillImage() {
 	const broadcasting = useObservableAsValue(camera.isBroadcasting$, undefined)
 	const cameraTrack = useObservableAsValue(camera.broadcastTrack$, undefined)
 	const image = useObservableAsValue(stillImage$, undefined)
+	// Read through the hook, not the observables behind it: the camera button
+	// consumes these fields, and the bug that broke it was the hook handing
+	// out the wrong one under the right name.
+	const userMedia = useUserMedia({})
 
 	// Frames are the whole question: a canvas that is drawn once and left
 	// alone yields a track that exists but never delivers anything, which
@@ -86,9 +90,21 @@ export default function DevStillImage() {
 
 			<StillImagePicker />
 
-			<Button onClick={() => setRevealed((r) => !r)}>
-				{revealed ? '変装に戻す' : 'アンマスクする'}
-			</Button>
+			<div className="flex flex-wrap gap-3">
+				<Button onClick={() => setRevealed((r) => !r)}>
+					{revealed ? '変装に戻す' : 'アンマスクする'}
+				</Button>
+				<Button
+					displayType="secondary"
+					onClick={() =>
+						broadcasting
+							? camera.stopBroadcasting()
+							: camera.startBroadcasting()
+					}
+				>
+					{broadcasting ? 'カメラを止める' : 'カメラを使う'}
+				</Button>
+			</div>
 
 			<video
 				ref={videoRef}
@@ -109,8 +125,18 @@ export default function DevStillImage() {
 				<dd data-testid="frame-count">{frames}</dd>
 				<dt className="text-zinc-500 dark:text-zinc-400">active</dt>
 				<dd data-testid="dbg-active">{String(active)}</dd>
-				<dt className="text-zinc-500 dark:text-zinc-400">broadcasting</dt>
+				<dt className="text-zinc-500 dark:text-zinc-400">カメラ稼働中</dt>
 				<dd data-testid="dbg-broadcasting">{String(broadcasting)}</dd>
+				<dt className="text-zinc-500 dark:text-zinc-400">
+					videoEnabled（カメラボタンが見る値）
+				</dt>
+				<dd data-testid="dbg-video-enabled">
+					{String(userMedia.videoEnabled)}
+				</dd>
+				<dt className="text-zinc-500 dark:text-zinc-400">映像を送出中</dt>
+				<dd data-testid="dbg-outgoing">
+					{String(userMedia.outgoingVideoEnabled)}
+				</dd>
 				<dt className="text-zinc-500 dark:text-zinc-400">cameraTrack</dt>
 				<dd data-testid="dbg-camera">
 					{cameraTrack ? cameraTrack.label || 'track' : String(cameraTrack)}
