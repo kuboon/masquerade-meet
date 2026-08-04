@@ -41,11 +41,8 @@ export function EnsurePermissions(props: EnsurePermissionsProps) {
 		return (
 			<div className="grid items-center h-full">
 				<div className="mx-auto space-y-2 max-w-80">
-					<h1 className="text-2xl font-bold">Permission denied</h1>
-					<p>
-						You will need to go into your browser settings and manually
-						re-enable permission.
-					</p>
+					<h1 className="text-2xl font-bold">権限が拒否されました</h1>
+					<p>ブラウザの設定からマイクとカメラの権限を許可し直してください。</p>
 				</div>
 			</div>
 		)
@@ -56,8 +53,10 @@ export function EnsurePermissions(props: EnsurePermissionsProps) {
 			<div className="grid items-center h-full">
 				<div className="mx-auto max-w-80">
 					<p className="mb-8">
-						In order to use Orange Meets, you will need to grant permission to
-						your camera and microphone. You will be prompted for access.
+						マスカレードを使うには、カメラとマイクの権限が必要です。次の操作でブラウザが許可を求めます。
+					</p>
+					<p className="mb-8 text-sm text-zinc-500 dark:text-zinc-400">
+						カメラは変装が解けるまで一度も配信されません。声もこのブラウザの中で変換してから送ります。
 					</p>
 					<Button
 						onClick={() => {
@@ -79,7 +78,7 @@ export function EnsurePermissions(props: EnsurePermissionsProps) {
 								})
 						}}
 					>
-						Allow access
+						権限を許可する
 					</Button>
 				</div>
 			</div>

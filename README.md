@@ -1,6 +1,6 @@
 # 🎭 マスカレード
 
-キャラクターに変装して話す、正体あてミーティング。
+誰が誰だかわからない、オンライン仮面ミーティング。
 
 Cloudflare の [Orange Meets](https://github.com/cloudflare/orange) をベースに、参加者ごとのボイスチェンジ機能を追加したものです。
 
