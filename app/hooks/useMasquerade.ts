@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
 import { getCharacter, getCharacterSet } from '~/utils/characterSets'
 import { neutralVoice } from '~/utils/characters'
 import { canStartMeeting } from '~/utils/masquerade'
+import { stillImage$ } from '~/utils/stillImage'
 import { setVoiceParams } from '~/utils/voiceChanger'
 import type useRoom from './useRoom'
-import type { UserMedia } from './useUserMedia'
+import { allowStillImage, type UserMedia } from './useUserMedia'
 
 /**
  * Owns everything about the masquerade: who is behind which character, when
@@ -82,23 +83,21 @@ export default function useMasquerade({
 	}, [revealed, character])
 
 	// A camera that is never sent cannot give anyone away. It comes back on
-	// automatically at the reveal, which is the whole payoff.
+	// automatically at the reveal, which is the whole payoff — unless a
+	// picture has been registered, in which case that is the point: showing
+	// something other than your face. Turning the camera on by hand still
+	// wins over the picture.
 	const { turnCameraOn, turnCameraOff } = userMedia
 	useEffect(() => {
-		if (revealed) turnCameraOn()
-		else turnCameraOff()
+		allowStillImage(revealed)
+		if (!revealed) {
+			turnCameraOff()
+			return
+		}
+		if (stillImage$.value === null) turnCameraOn()
 	}, [revealed, turnCameraOn, turnCameraOff])
 
 	const participants = roomState.users
-	const takenCharacterIds = useMemo(
-		() =>
-			new Set(
-				participants
-					.filter((u) => u.id !== identity?.id && u.characterId)
-					.map((u) => u.characterId!)
-			),
-		[participants, identity?.id]
-	)
 
 	const everyoneReady =
 		participants.length > 0 && participants.every((u) => u.ready)
@@ -122,10 +121,9 @@ export default function useMasquerade({
 			[characterSet]
 		),
 		participants,
-		takenCharacterIds,
 		everyoneReady,
 		/** the same rule the room enforces, so the button cannot over-promise */
-		canStart: canStartMeeting(participants),
+		canStart: canStartMeeting(participants, characterSet.characters.length),
 		readyCount: participants.filter((u) => u.ready).length,
 		/** the meeting is under way — the lobby should hand over to the room */
 		meetingStarted: phase !== 'lobby',

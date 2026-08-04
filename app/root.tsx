@@ -21,7 +21,6 @@ import { useFullscreen, useToggle } from 'react-use'
 import { QueryClient, QueryClientProvider } from 'react-query'
 import tailwind from '~/styles/tailwind.css'
 import { elementNotContainedByClickTarget } from './utils/elementNotContainedByClickTarget'
-import getUsername from './utils/getUsername.server'
 import { safeRedirect } from './utils/safeReturnUrl'
 import { cn } from './utils/style'
 
@@ -32,15 +31,8 @@ function addOneDay(date: Date): Date {
 }
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
-	const url = new URL(request.url)
-	const username = await getUsername(request)
-	if (!username && url.pathname !== '/set-username') {
-		const redirectUrl = new URL(url)
-		redirectUrl.pathname = '/set-username'
-		redirectUrl.searchParams.set('return-url', request.url)
-		throw safeRedirect(redirectUrl.toString())
-	}
-
+	// The display name is asked for in the lobby, not up front: the landing
+	// page should be able to explain what this is before demanding anything.
 	const defaultResponse = json({
 		userDirectoryUrl: context.env.USER_DIRECTORY_URL,
 	})
@@ -76,7 +68,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
 export const meta: MetaFunction = () => [
 	{
-		title: 'Masquerade Meet',
+		title: 'マスカレード',
 	},
 ]
 
@@ -128,8 +120,8 @@ const Document: FC<{ children?: ReactNode }> = ({ children }) => {
 			<head>
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
-				<meta name="apple-mobile-web-app-title" content="Masquerade Meet" />
-				<meta name="application-name" content="Masquerade Meet" />
+				<meta name="apple-mobile-web-app-title" content="マスカレード" />
+				<meta name="application-name" content="マスカレード" />
 				<meta name="msapplication-TileColor" content="#ffffff" />
 				<meta
 					name="theme-color"

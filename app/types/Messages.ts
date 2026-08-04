@@ -96,10 +96,6 @@ export type ServerMessage =
 			type: 'userLeftNotification'
 			id: string
 	  }
-	| {
-			type: 'characterTaken'
-			characterId: string
-	  }
 
 export type ClientMessage =
 	| {

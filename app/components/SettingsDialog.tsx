@@ -12,6 +12,7 @@ import {
 } from './Dialog'
 import { Icon } from './Icon/Icon'
 import { Label } from './Label'
+import { StillImagePicker } from './StillImagePicker'
 import { Toggle } from './Toggle'
 import { Tooltip } from './Tooltip'
 import { VideoInputSelector } from './VideoInputSelector'
@@ -94,6 +95,9 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({
 							/>
 						</div>
 					</div>
+					{/* Also offered when first entering a room, but a returning
+					    visitor never sees that form — their name is already set. */}
+					<StillImagePicker className="mt-6" />
 				</DialogContent>
 			</Portal>
 		</Dialog>

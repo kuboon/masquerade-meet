@@ -2,9 +2,18 @@ import { getCamera, getMic, getScreenshare } from 'partytracks/client'
 import { useObservable, useObservableAsValue } from 'partytracks/react'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocalStorage } from 'react-use'
+import {
+	BehaviorSubject,
+	combineLatest,
+	map,
+	shareReplay,
+	switchMap,
+} from 'rxjs'
 import blurVideoTrack from '~/utils/blurVideoTrack'
 import { mode } from '~/utils/mode'
 import noiseSuppression from '~/utils/noiseSuppression'
+import { stillImage$ } from '~/utils/stillImage'
+import { stillImageVideoTrack } from '~/utils/stillImageTrack'
 
 export const errorMessageMap = {
 	NotAllowedError:
@@ -28,6 +37,61 @@ export const camera = getCamera({
 	constraints: { width: { ideal: 1280 }, height: { ideal: 720 } },
 })
 export const screenshare = getScreenshare({ audio: false })
+
+/**
+ * Whether the still image is allowed to stand in for the camera.
+ *
+ * Only true after the reveal: before it, the character is the disguise and
+ * a photograph would defeat the whole thing.
+ */
+const stillImageAllowed$ = new BehaviorSubject(false)
+
+export function allowStillImage(allowed: boolean) {
+	stillImageAllowed$.next(allowed)
+}
+
+const stillImageActive$ = combineLatest([
+	stillImageAllowed$,
+	camera.isBroadcasting$,
+	stillImage$,
+]).pipe(
+	// The camera wins if it is on: turning it on is a deliberate act, and the
+	// picture is what you fall back to rather than something you are stuck
+	// with.
+	map(([allowed, broadcasting, image]) => allowed && !broadcasting && !!image),
+	shareReplay({ bufferSize: 1, refCount: true })
+)
+
+/**
+ * What actually goes out on the wire: the camera, or the stored picture
+ * drawn onto a canvas.
+ *
+ * Deliberately NOT a camera transform. partytracks bypasses transforms
+ * while the camera is not broadcasting, so a transform would mean opening
+ * the webcam — light and all — for somebody whose entire reason for using
+ * this is not to be seen.
+ *
+ * Module-level so its identity is stable: `partyTracks.push` is memoised on
+ * it, and a new observable each render would renegotiate the track.
+ */
+export const outgoingVideoTrack$ = combineLatest([
+	stillImageActive$,
+	stillImage$,
+]).pipe(
+	switchMap(([active, image]) =>
+		active && image ? stillImageVideoTrack(image) : camera.broadcastTrack$
+	),
+	shareReplay({ bufferSize: 1, refCount: true })
+)
+
+/**
+ * What other people are told. They render the placeholder unless this is
+ * true, so a picture nobody knows about would never be shown.
+ */
+const outgoingVideoEnabled$ = combineLatest([
+	stillImageActive$,
+	camera.isBroadcasting$,
+]).pipe(map(([still, broadcasting]) => still || broadcasting))
 
 function useNoiseSuppression() {
 	const [suppressNoise, setSuppressNoise] = useLocalStorage(
@@ -163,14 +227,16 @@ export default function useUserMedia(options: {
 		videoDeviceId: useObservableAsValue(camera.activeDevice$)?.deviceId,
 		turnCameraOn: camera.startBroadcasting,
 		turnCameraOff: camera.stopBroadcasting,
-		videoEnabled: useObservableAsValue(camera.isBroadcasting$, false),
+		videoEnabled: useObservableAsValue(outgoingVideoEnabled$, false),
+		/** true when the stored picture is standing in for the camera */
+		stillImageActive: useObservableAsValue(stillImageActive$, false),
 		videoUnavailableReason,
 		blurVideo,
 		setBlurVideo,
 		suppressNoise,
 		setSuppressNoise,
-		videoTrack$: camera.broadcastTrack$,
-		videoStreamTrack: useObservableAsValue(camera.broadcastTrack$),
+		videoTrack$: outgoingVideoTrack$,
+		videoStreamTrack: useObservableAsValue(outgoingVideoTrack$),
 
 		startScreenShare,
 		endScreenShare,

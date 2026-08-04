@@ -7,8 +7,6 @@ import { expect, test } from '@playwright/test'
  */
 test('records a loop and disguises it', async ({ page }) => {
 	await page.goto('/dev/voice')
-	await page.getByLabel('Enter your display name').fill('tuner')
-	await page.getByLabel('Enter your display name').press('Enter')
 
 	await expect(
 		page.getByRole('heading', { name: 'ボイス調整ツール' })

@@ -4,7 +4,6 @@ import { json } from '@remix-run/cloudflare'
 import { useNavigate, useParams, useSearchParams } from '@remix-run/react'
 import { useObservableAsValue } from 'partytracks/react'
 import { useEffect } from 'react'
-import invariant from 'tiny-invariant'
 import { AudioIndicator } from '~/components/AudioIndicator'
 import { Button } from '~/components/Button'
 import { CharacterAvatar } from '~/components/CharacterAvatar'
@@ -23,8 +22,9 @@ import getUsername from '~/utils/getUsername.server'
 import { minimumParticipants } from '~/utils/masquerade'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+	// May be null: the layout above shows the name form in that case and this
+	// route never renders.
 	const username = await getUsername(request)
-	invariant(username)
 	return json({ username, callsAppId: context.env.CALLS_APP_ID })
 }
 
@@ -55,7 +55,7 @@ export default function Lobby() {
 	const { audioStreamTrack, audioEnabled } = userMedia
 	const session = useObservableAsValue(partyTracks.session$)
 	const sessionError = useObservableAsValue(partyTracks.sessionError$)
-	const { identity, characterTaken, clearCharacterTaken } = room
+	const { identity } = room
 	trackRefreshes()
 
 	const roomUrl = useRoomUrl()
@@ -65,7 +65,6 @@ export default function Lobby() {
 		character,
 		characterSet,
 		participants,
-		takenCharacterIds,
 		everyoneReady,
 		canStart,
 		readyCount,
@@ -86,23 +85,20 @@ export default function Lobby() {
 		navigate('room' + (params.size > 0 ? '?' + params.toString() : ''))
 	}, [meetingStarted, ready, setJoined, navigate, params])
 
-	useEffect(() => {
-		if (!characterTaken) return
-		const timeout = setTimeout(clearCharacterTaken, 2500)
-		return () => clearTimeout(timeout)
-	}, [characterTaken, clearCharacterTaken])
-
 	const waitingOn = participants.filter((u) => !u.ready).length
 	const missingParticipants = minimumParticipants - participants.length
 	// Being short of people and being short of ready people are different
 	// problems, and telling the host "0人の準備待ち" when they are simply alone
 	// would send them looking for a bug that isn't there.
+	const overCapacity = participants.length - characterSet.characters.length
 	const startHint =
-		missingParticipants > 0
-			? `ミーティング開始にはあと${missingParticipants}人の参加が必要です`
-			: everyoneReady
-				? '全員そろいました'
-				: `あと${waitingOn}人の準備を待っています`
+		overCapacity > 0
+			? `キャラクターが足りません。1ルームの定員は${characterSet.characters.length}人です（${overCapacity}人超過）`
+			: missingParticipants > 0
+				? `ミーティング開始にはあと${missingParticipants}人の参加が必要です`
+				: everyoneReady
+					? '全員そろいました'
+					: `あと${waitingOn}人の準備を待っています`
 
 	return (
 		<div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
@@ -143,35 +139,28 @@ export default function Lobby() {
 					</div>
 					<div className="min-w-0">
 						<p className="text-xs text-zinc-500 dark:text-zinc-400">
-							あなたはこのキャラクターとして参加します
+							希望するキャラクター
 						</p>
 						<p className="truncate text-2xl font-bold">
 							{character ? `${character.emoji} ${character.name}` : '選択中…'}
 						</p>
 						<p className="text-sm text-zinc-500 dark:text-zinc-400">
-							{character
-								? character.tagline
-								: `空いているキャラクターがありません。1ルームの定員は${characterSet.characters.length}人です。`}
+							{character?.tagline}
 						</p>
 					</div>
 				</div>
 
 				<div className="space-y-2">
-					<div className="flex items-baseline justify-between">
-						<h2 className="text-sm font-semibold">キャラクターを選ぶ</h2>
-						{characterTaken && (
-							<span className="text-xs text-red-500">
-								そのキャラクターは先に取られました
-							</span>
-						)}
-					</div>
+					<h2 className="text-sm font-semibold">キャラクターを選ぶ</h2>
 					<CharacterPicker
 						characters={characterSet.characters}
 						selectedId={character?.id}
-						takenIds={takenCharacterIds}
 						disabled={ready}
 						onSelect={selectCharacter}
 					/>
+					<p className="text-xs text-zinc-500 dark:text-zinc-400">
+						誰が誰を選んでいるかは分かりません。希望が重なった場合は、ミーティング開始時に抽選で決まり、外れた人には空いているキャラクターが割り当てられます。
+					</p>
 					<p className="text-xs text-zinc-500 dark:text-zinc-400">
 						ミーティング中は声がこのキャラクターの声色に変わり、カメラ映像の代わりにキャラクターが表示されます。
 						本名はルーム管理者が解除するまで誰にも見えません。
