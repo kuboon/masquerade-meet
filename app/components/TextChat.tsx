@@ -1,7 +1,7 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useEffect, useRef, useState } from 'react'
 import type { User } from '~/types/Messages'
-import { chatSenderName, type ChatMessage } from '~/utils/textChat'
+import { chatSender, linkify, type ChatMessage } from '~/utils/textChat'
 import { Button } from './Button'
 import { Icon } from './Icon/Icon'
 import { Input } from './Input'
@@ -24,12 +24,15 @@ export function TextChat({
 	messages,
 	users,
 	selfId,
+	characterName,
 	onSend,
 	onClose,
 }: {
 	messages: ChatMessage[]
 	users: User[]
 	selfId?: string
+	/** only once the masks are off — see chatSender */
+	characterName?: (characterId?: string) => string | undefined
 	onSend: (body: string) => void
 	onClose: () => void
 }) {
@@ -64,27 +67,53 @@ export function TextChat({
 						まだ発言はありません。ここでの発言はこのミーティング限りで、保存されません。
 					</p>
 				)}
-				{messages.map((message) => (
-					<div key={message.id} className="text-sm">
-						<div className="flex items-baseline gap-2">
-							<span
-								className={
-									message.from === selfId
-										? 'font-bold text-orange-600 dark:text-orange-400'
-										: 'font-bold'
-								}
-							>
-								{chatSenderName(message, users)}
-							</span>
-							<span className="text-xs text-zinc-500 dark:text-zinc-400">
-								{timeOf(message.at)}
-							</span>
+				{messages.map((message) => {
+					const sender = chatSender(message, users, characterName)
+					return (
+						<div key={message.id} className="text-sm">
+							<div className="flex items-baseline gap-2">
+								<span
+									className={
+										message.from === selfId
+											? 'font-bold text-orange-600 dark:text-orange-400'
+											: 'font-bold'
+									}
+								>
+									{sender.name}
+								</span>
+								{sender.character && (
+									<span className="text-xs text-zinc-500 dark:text-zinc-400">
+										（{sender.character}）
+									</span>
+								)}
+								<span className="text-xs text-zinc-500 dark:text-zinc-400">
+									{timeOf(message.at)}
+								</span>
+							</div>
+							{/* Line breaks are kept, and long unbroken strings wrap
+							    rather than stretching the panel. */}
+							<p className="whitespace-pre-wrap break-words">
+								{linkify(message.body).map((part, i) =>
+									part.type === 'link' ? (
+										<a
+											key={i}
+											href={part.value}
+											target="_blank"
+											// Somebody else's link: no referrer, no opener, and
+											// nothing to gain by posting one.
+											rel="noopener noreferrer nofollow"
+											className="text-orange-600 underline underline-offset-2 hover:no-underline dark:text-orange-400"
+										>
+											{part.value}
+										</a>
+									) : (
+										<span key={i}>{part.value}</span>
+									)
+								)}
+							</p>
 						</div>
-						{/* Line breaks are kept, and long unbroken strings wrap
-						    rather than stretching the panel. */}
-						<p className="whitespace-pre-wrap break-words">{message.body}</p>
-					</div>
-				))}
+					)
+				})}
 				<div ref={bottomRef} />
 			</div>
 
