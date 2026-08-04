@@ -23,10 +23,11 @@ export default function useMasquerade({
 	userMedia: UserMedia
 }) {
 	const { roomState, identity, send } = room
-	const { phase, hostId, revealAt, serverNow } = roomState.masquerade
+	const { phase, hostId, revealAt, serverNow, characterSetId } =
+		roomState.masquerade
 
 	const isHost = Boolean(identity && hostId === identity.id)
-	const characterSet = getCharacterSet()
+	const characterSet = getCharacterSet(characterSetId)
 	const character = getCharacter(characterSet, identity?.characterId)
 
 	// Translate the server's deadline onto this machine's clock. Only the

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ClientMessage, RoomState, ServerMessage } from '~/types/Messages'
+import { defaultCharacterSetId } from '~/utils/characterSets'
 
 import { nanoid } from 'nanoid'
 import usePartySocket from 'partysocket/react'
@@ -37,13 +38,23 @@ function roomStateFingerprint(state: RoomState) {
 export default function useRoom({
 	roomName,
 	userMedia,
+	characterSetId,
 }: {
 	roomName: string
 	userMedia: UserMedia
+	/**
+	 * The set asked for in the room URL. Only honoured when this connection is
+	 * the one that creates the room; afterwards the room's own choice wins.
+	 */
+	characterSetId?: string
 }) {
 	const [roomState, setRoomState] = useState<RoomState>({
 		users: [],
-		masquerade: { phase: 'lobby', serverNow: Date.now() },
+		masquerade: {
+			phase: 'lobby',
+			serverNow: Date.now(),
+			characterSetId: defaultCharacterSetId,
+		},
 		ai: { enabled: false },
 	})
 	const [characterTaken, setCharacterTaken] = useState<string>()
@@ -60,6 +71,8 @@ export default function useRoom({
 		id: connectionId,
 		party: 'rooms',
 		room: roomName,
+		// Read by the Durable Object only when it is opening a brand new room.
+		query: characterSetId ? { set: characterSetId } : {},
 		onMessage: (e) => {
 			const message = JSON.parse(e.data) as ServerMessage
 			switch (message.type) {
