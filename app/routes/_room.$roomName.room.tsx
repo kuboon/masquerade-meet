@@ -6,7 +6,7 @@ import {
 	useParams,
 	useSearchParams,
 } from '@remix-run/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMount, useWindowSize } from 'react-use'
 import { AiButton } from '~/components/AiButton'
 import { ButtonLink } from '~/components/Button'
@@ -21,6 +21,7 @@ import { ParticipantLayout } from '~/components/ParticipantLayout'
 import { ParticipantsButton } from '~/components/ParticipantsMenu'
 import { PullAudioTracks } from '~/components/PullAudioTracks'
 import { RaiseHandButton } from '~/components/RaiseHandButton'
+import { RestartButton } from '~/components/RestartButton'
 import { RevealButton } from '~/components/RevealButton'
 import { RevealCountdown } from '~/components/RevealCountdown'
 import { SafetyNumberToast } from '~/components/SafetyNumberToast'
@@ -58,12 +59,28 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 }
 
 export default function Room() {
-	const { joined } = useRoomContext()
+	const { joined, setJoined, masquerade } = useRoomContext()
 	const navigate = useNavigate()
 	const { roomName } = useParams()
 	const { mode, bugReportsEnabled, disableLobbyEnforcement } =
 		useLoaderData<typeof loader>()
 	const [search] = useSearchParams()
+
+	// The host can send everybody back for another round. Characters are picked
+	// in the lobby and nowhere else, so this walks out of the meeting even where
+	// the guard below would let someone stay — but only on the way back from a
+	// meeting, so opening this route directly still works in development.
+	const wasInMeeting = useRef(false)
+	useEffect(() => {
+		if (masquerade.phase !== 'lobby') {
+			wasInMeeting.current = true
+			return
+		}
+		if (!wasInMeeting.current) return
+		wasInMeeting.current = false
+		setJoined(false)
+		navigate(`/${roomName}${search.size > 0 ? '?' + search.toString() : ''}`)
+	}, [masquerade.phase, setJoined, navigate, roomName, search])
 
 	useEffect(() => {
 		if (!joined && mode !== 'development' && !disableLobbyEnforcement)
@@ -214,6 +231,7 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 					{masquerade.revealed && <CameraButton />}
 					<ScreenshareButton />
 					<RevealButton />
+					<RestartButton />
 					<RaiseHandButton
 						raisedHand={raisedHand}
 						onClick={() => setRaisedHand(!raisedHand)}

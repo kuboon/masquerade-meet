@@ -17,7 +17,12 @@ import {
 } from '~/utils/characterSets'
 import type { CharacterSet } from '~/utils/characters'
 import getUsername from '~/utils/getUsername.server'
-import { assignCharacters, canStartMeeting } from '~/utils/masquerade'
+import {
+	assignCharacters,
+	canRestartMeeting,
+	canStartMeeting,
+	restartParticipant,
+} from '~/utils/masquerade'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -579,6 +584,38 @@ export class ChatRoom extends Server<Env> {
 					// Make sure a broadcast lands the moment the masks drop, so
 					// that anyone who reconnects mid-countdown is caught up.
 					await this.scheduleNextAlarm()
+					break
+				}
+				case 'restartMeeting': {
+					const hostId = await this.ensureHost()
+					if (hostId !== connection.id) break
+					const { phase } = await this.getMasqueradeState()
+					if (!canRestartMeeting(phase)) break
+
+					// Everyone goes back to the lobby to pick again, masked once
+					// more even though they have just been looking at each other's
+					// faces. Registered names survive; the characters do not —
+					// keeping them would hand the whole room the answer, since
+					// everybody now knows who was the bear. Whoever does not
+					// bother re-picking gets a face nobody can place instead.
+					const users = [...(await this.getUsers()).values()]
+					const characterSet = getCharacterSet(
+						await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+					)
+					const dealt = assignCharacters(
+						users.map(({ id }) => ({ id })),
+						characterSet.characters.map((c) => c.id)
+					)
+					for (const user of users) {
+						await this.ctx.storage.put(`session-${user.id}`, {
+							...restartParticipant(user),
+							characterId: dealt.get(user.id) ?? user.characterId,
+						} satisfies StoredUser)
+					}
+					await this.ctx.storage.put(PHASE_KEY, 'lobby' satisfies RoomPhase)
+					await this.ctx.storage.delete(REVEAL_AT_KEY)
+					log({ eventName: 'meetingRestarted', meetingId })
+					await this.broadcastRoomState()
 					break
 				}
 				case 'callsApiHistoryEntry': {

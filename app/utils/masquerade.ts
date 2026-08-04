@@ -1,3 +1,5 @@
+import type { RoomPhase } from '~/types/Messages'
+
 /**
  * How many people have to be in the lobby before the host can start.
  *
@@ -24,6 +26,42 @@ export function canStartMeeting(
 		participants.length <= capacity &&
 		participants.every((u) => u.ready)
 	)
+}
+
+/**
+ * Whether the host may send everyone back to the lobby for another round.
+ *
+ * Only once the masks are off. Before that there is nothing to start over
+ * from, and pulling the room apart mid-countdown would leave people half
+ * unmasked. Shared with the button so it cannot offer what the room refuses.
+ */
+export function canRestartMeeting(phase: RoomPhase): boolean {
+	return phase === 'revealed'
+}
+
+/**
+ * A participant as they go back into the lobby for another round.
+ *
+ * Everything about the round that just finished is dropped, but the name
+ * they registered is not, so nobody has to type theirs in again. The
+ * character is dealt afresh by the caller rather than kept: everyone has
+ * just seen who was wearing what.
+ */
+export function restartParticipant<
+	T extends {
+		ready: boolean
+		joined: boolean
+		raisedHand: boolean
+		speaking: boolean
+	},
+>(user: T): T {
+	return {
+		...user,
+		ready: false,
+		joined: false,
+		raisedHand: false,
+		speaking: false,
+	}
 }
 
 /**
