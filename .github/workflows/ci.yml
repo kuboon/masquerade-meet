@@ -26,7 +26,7 @@ jobs:
       - run: npm run check
 
   e2e:
-    name: Voice changer (real browser)
+    name: Browser tests (real browser)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -37,10 +37,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      # Only the voice-changer spec runs here. joining-room.spec.ts drives a
-      # real meeting, which needs Cloudflare Realtime credentials we do not
-      # want in CI; the DSP spec is self-contained in an OfflineAudioContext.
-      - run: npx playwright test voice-changer
+      # Everything except joining-room.spec.ts, which drives a real meeting
+      # and needs Cloudflare Realtime credentials we do not want in CI. The
+      # DSP spec is self-contained in an OfflineAudioContext, and the tuner
+      # spec gets by on Chromium's fake capture device.
+      - run: npx playwright test voice-changer dev-voice
         env:
           # serve the built worker instead of the Remix watch-mode dev server
           PLAYWRIGHT_WEB_SERVER_COMMAND: npm start

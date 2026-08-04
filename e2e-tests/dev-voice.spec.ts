@@ -29,8 +29,16 @@ test('records a loop and disguises it', async ({ page }) => {
 	// Moving a control edits the selected character's draft and shows up in
 	// the paste-ready snippet.
 	await page.getByLabel('ピッチ比 (数値)').fill('1.23')
-	await expect(page.getByLabel('貼り付け用')).toHaveValue(/pitchRatio: 1\.23,/)
+	await expect(page.getByLabel('書き出し')).toHaveValue(/pitchRatio: 1\.23,/)
 	await expect(page.getByText('1体を編集中')).toBeVisible()
+
+	// The whole-set view covers every character, edited or not.
+	await page.getByLabel('セット全体').click()
+	const wholeSet = await page.getByLabel('書き出し').inputValue()
+	expect(wholeSet).toContain('// bear — くまごろう')
+	expect(wholeSet).toContain('// lion — ')
+	expect(wholeSet.match(/voice: \{/g)).toHaveLength(15)
+	await page.getByLabel('セット全体').click()
 
 	await page.getByRole('button', { name: 'このキャラをリセット' }).click()
 	await expect(page.getByText('ソースの値のままです')).toBeVisible()
