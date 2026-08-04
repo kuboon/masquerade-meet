@@ -140,6 +140,9 @@ export type ClientMessage =
 			type: 'startReveal'
 	  }
 	| {
+			type: 'restartMeeting'
+	  }
+	| {
 			type: 'enableAi'
 			instructions?: string
 			voice?: string

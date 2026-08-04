@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
 	assignCharacters,
+	canRestartMeeting,
 	canStartMeeting,
 	minimumParticipants,
+	restartParticipant,
 } from './masquerade'
 
 const ready = (count: number) =>
@@ -36,6 +38,51 @@ describe('canStartMeeting', () => {
 	it('refuses more people than there are characters to hide behind', () => {
 		expect(canStartMeeting(ready(CAPACITY), CAPACITY)).toBe(true)
 		expect(canStartMeeting(ready(CAPACITY + 1), CAPACITY)).toBe(false)
+	})
+})
+
+describe('canRestartMeeting', () => {
+	it('offers another round at any point in a meeting', () => {
+		// Including before the reveal: a round that is going wrong is worth
+		// restarting without sitting through the payoff first.
+		expect(canRestartMeeting('masquerade')).toBe(true)
+		expect(canRestartMeeting('revealing')).toBe(true)
+		expect(canRestartMeeting('revealed')).toBe(true)
+	})
+
+	it('has nothing to offer in the lobby', () => {
+		expect(canRestartMeeting('lobby')).toBe(false)
+	})
+})
+
+describe('restartParticipant', () => {
+	const veteran = {
+		id: 'a',
+		realName: '本名',
+		name: 'くまごろう',
+		characterId: 'bear',
+		ready: true,
+		joined: true,
+		raisedHand: true,
+		speaking: true,
+	}
+
+	it('puts everyone back to square one for the next round', () => {
+		expect(restartParticipant(veteran)).toMatchObject({
+			ready: false,
+			joined: false,
+			raisedHand: false,
+			speaking: false,
+		})
+	})
+
+	it('keeps who they are', () => {
+		// Losing the name would make the lobby demand one again from people who
+		// are already sitting in it, and refuse to let them ready up until they
+		// noticed. The character is the room's to deal, not this function's.
+		const restarted = restartParticipant(veteran)
+		expect(restarted.realName).toBe('本名')
+		expect(restarted.id).toBe('a')
 	})
 })
 

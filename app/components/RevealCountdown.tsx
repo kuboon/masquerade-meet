@@ -8,7 +8,7 @@ export function RevealCountdown({ seconds }: { seconds: number }) {
 		<div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm">
 			<div className="text-center text-white">
 				<p className="text-lg font-medium tracking-widest md:text-2xl">
-					ボイスチェンジ解除まで
+					アンマスクまで
 				</p>
 				<p
 					key={seconds}

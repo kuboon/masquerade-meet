@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
 import { getCharacter, getCharacterSet } from '~/utils/characterSets'
 import { neutralVoice } from '~/utils/characters'
-import { canStartMeeting } from '~/utils/masquerade'
+import { canRestartMeeting, canStartMeeting } from '~/utils/masquerade'
 import { stillImage$ } from '~/utils/stillImage'
 import { setVoiceParams } from '~/utils/voiceChanger'
 import type useRoom from './useRoom'
@@ -124,6 +124,8 @@ export default function useMasquerade({
 		everyoneReady,
 		/** the same rule the room enforces, so the button cannot over-promise */
 		canStart: canStartMeeting(participants, characterSet.characters.length),
+		/** the host may run the whole thing again with the same people */
+		canRestart: canRestartMeeting(phase),
 		readyCount: participants.filter((u) => u.ready).length,
 		/** the meeting is under way — the lobby should hand over to the room */
 		meetingStarted: phase !== 'lobby',
@@ -141,6 +143,7 @@ export default function useMasquerade({
 		),
 		startMeeting: useCallback(() => send({ type: 'startMeeting' }), [send]),
 		startReveal: useCallback(() => send({ type: 'startReveal' }), [send]),
+		restartMeeting: useCallback(() => send({ type: 'restartMeeting' }), [send]),
 	}
 }
 
