@@ -31,12 +31,17 @@ export function canStartMeeting(
 /**
  * Whether the host may send everyone back to the lobby for another round.
  *
- * Only once the masks are off. Before that there is nothing to start over
- * from, and pulling the room apart mid-countdown would leave people half
- * unmasked. Shared with the button so it cannot offer what the room refuses.
+ * Any time a meeting is running, not only after the reveal: a round that is
+ * going wrong — the wrong people, a character nobody can hear — is worth
+ * restarting before the payoff, not after it. Only the lobby is excluded,
+ * because that is already where restarting puts everyone. Interrupting the
+ * countdown is allowed too; the phase going back to lobby resets it, so
+ * nobody is left half unmasked.
+ *
+ * Shared with the button so it cannot offer what the room would refuse.
  */
 export function canRestartMeeting(phase: RoomPhase): boolean {
-	return phase === 'revealed'
+	return phase !== 'lobby'
 }
 
 /**

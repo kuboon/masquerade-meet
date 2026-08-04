@@ -41,6 +41,34 @@ test('two users meet in disguise and are then revealed', async ({
 		})
 		.toBeGreaterThanOrEqual(2)
 
+	// The host can start over at any point in a meeting, the reveal included.
+	// Here it happens while everyone is still masked — a round that is going
+	// wrong should not have to be played out first.
+	const readyUp = (page: Page) =>
+		page.getByRole('button', { name: '準備完了', exact: true })
+	await host.getByRole('button', { name: '最初から' }).click()
+	await host.getByRole('button', { name: 'キャラクター選択に戻る' }).click()
+
+	for (const page of [host, guest]) {
+		// Everybody walks back out to the lobby, not just the host — the half
+		// of this that a single page cannot show. And enabled, not merely
+		// present: the name from the first round is still on file, so nobody
+		// has to introduce themselves twice.
+		await expect(readyUp(page)).toBeEnabled({ timeout: 20_000 })
+	}
+
+	await readyUp(host).click()
+	await readyUp(guest).click()
+	await host.getByRole('button', { name: 'ミーティング開始' }).click()
+
+	// masks back on for the second round
+	await expect(guest.getByRole('button', { name: 'Leave' })).toBeVisible()
+	await expect
+		.poll(async () => guest.locator('img[src^="/characters/"]').count(), {
+			timeout: 10_000,
+		})
+		.toBeGreaterThanOrEqual(2)
+
 	await host.getByRole('button', { name: '正体を明かす' }).click()
 	await host.getByRole('button', { name: 'カウントダウン開始' }).click()
 
@@ -49,29 +77,8 @@ test('two users meet in disguise and are then revealed', async ({
 		.poll(async () => guest.locator('video').count(), { timeout: 20_000 })
 		.toBe(2)
 
-	// the host can run the whole thing again with the same people. Everybody
-	// walks back out to the lobby — not just the host, which is the half of
-	// this that a single page cannot show.
+	// and starting over still works from the other side of the reveal
 	await host.getByRole('button', { name: '最初から' }).click()
 	await host.getByRole('button', { name: 'キャラクター選択に戻る' }).click()
-
-	const readyAgain = (page: Page) =>
-		page.getByRole('button', { name: '準備完了', exact: true })
-	for (const page of [host, guest]) {
-		// Enabled, not merely present: the name registered for the first round
-		// is still on file, so nobody has to introduce themselves twice.
-		await expect(readyAgain(page)).toBeEnabled({ timeout: 20_000 })
-	}
-
-	await readyAgain(host).click()
-	await readyAgain(guest).click()
-	await host.getByRole('button', { name: 'ミーティング開始' }).click()
-
-	// and the masks are back on for the second round
-	await expect(guest.getByRole('button', { name: 'Leave' })).toBeVisible()
-	await expect
-		.poll(async () => guest.locator('img[src^="/characters/"]').count(), {
-			timeout: 10_000,
-		})
-		.toBeGreaterThanOrEqual(2)
+	await expect(readyUp(guest)).toBeEnabled({ timeout: 20_000 })
 })

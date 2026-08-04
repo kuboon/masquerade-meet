@@ -42,16 +42,16 @@ describe('canStartMeeting', () => {
 })
 
 describe('canRestartMeeting', () => {
-	it('only offers another round once the masks are off', () => {
+	it('offers another round at any point in a meeting', () => {
+		// Including before the reveal: a round that is going wrong is worth
+		// restarting without sitting through the payoff first.
+		expect(canRestartMeeting('masquerade')).toBe(true)
+		expect(canRestartMeeting('revealing')).toBe(true)
 		expect(canRestartMeeting('revealed')).toBe(true)
 	})
 
-	it('refuses while a round is still going', () => {
+	it('has nothing to offer in the lobby', () => {
 		expect(canRestartMeeting('lobby')).toBe(false)
-		expect(canRestartMeeting('masquerade')).toBe(false)
-		// Halfway through the countdown is the worst moment to pull the room
-		// apart: some clients would already have dropped their disguise.
-		expect(canRestartMeeting('revealing')).toBe(false)
 	})
 })
 

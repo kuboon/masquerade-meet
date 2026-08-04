@@ -7,9 +7,10 @@ import { Tooltip } from './Tooltip'
 /**
  * Host-only control that runs the whole thing again with the same people.
  *
- * Only live once the masks are off, which is when a round is actually over.
+ * Live for the whole meeting, not just after the reveal: a round that is
+ * going wrong is worth restarting before the payoff rather than after it.
  * Everyone lands back in the lobby to pick a character again — names stay,
- * so the second round starts with a click rather than a form.
+ * so the next round starts with a click rather than a form.
  */
 export function RestartButton() {
 	const { masquerade } = useRoomContext()
@@ -33,8 +34,8 @@ export function RestartButton() {
 				<AlertDialog.Content className="bg-white dark:bg-zinc-900">
 					<AlertDialog.Title>最初からやり直しますか？</AlertDialog.Title>
 					<AlertDialog.Description>
-						参加者全員がキャラクター選択の画面に戻り、もう一度変装してミーティングを始められます。
-						登録した名前と画像はそのまま残ります。
+						いまのミーティングを終了し、参加者全員がキャラクター選択の画面に戻ります。
+						キャラクターは全員に配り直され、登録した名前と画像はそのまま残ります。
 					</AlertDialog.Description>
 					<AlertDialog.Actions>
 						<AlertDialog.Cancel asChild>
