@@ -5,6 +5,7 @@ import { useLocalStorage } from 'react-use'
 import {
 	BehaviorSubject,
 	combineLatest,
+	distinctUntilChanged,
 	map,
 	shareReplay,
 	switchMap,
@@ -50,7 +51,7 @@ export function allowStillImage(allowed: boolean) {
 	stillImageAllowed$.next(allowed)
 }
 
-const stillImageActive$ = combineLatest([
+export const stillImageActive$ = combineLatest([
 	stillImageAllowed$,
 	camera.isBroadcasting$,
 	stillImage$,
@@ -59,6 +60,11 @@ const stillImageActive$ = combineLatest([
 	// picture is what you fall back to rather than something you are stuck
 	// with.
 	map(([allowed, broadcasting, image]) => allowed && !broadcasting && !!image),
+	// camera.isBroadcasting$ is pushed from inside camera.broadcastTrack$'s own
+	// pipeline, so subscribing to that track makes this re-emit — and the
+	// switchMap below would resubscribe the track, which pushes again, forever.
+	// The track never survives long enough to reach anybody. Only pass changes.
+	distinctUntilChanged(),
 	shareReplay({ bufferSize: 1, refCount: true })
 )
 
