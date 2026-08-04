@@ -57,6 +57,9 @@ const CHARACTER_SET_KEY = 'masquerade:characterSetId'
 /** Long enough for a real name, short enough not to break the tiles. */
 const MAX_NAME_LENGTH = 40
 
+/** Long enough to say something, short enough not to be a payload. */
+const MAX_CHAT_LENGTH = 500
+
 /**
  * The ChatRoom Durable Object Class
  *
@@ -616,6 +619,24 @@ export class ChatRoom extends Server<Env> {
 					await this.ctx.storage.delete(REVEAL_AT_KEY)
 					log({ eventName: 'meetingRestarted', meetingId })
 					await this.broadcastRoomState()
+					break
+				}
+				case 'chatMessage': {
+					// Not stored, only relayed: the log lives in the clients that
+					// were in the room to hear it. Nothing is said in the lobby,
+					// where there is no meeting to say it in.
+					const { phase } = await this.getMasqueradeState()
+					if (phase === 'lobby') break
+					const body = data.body.trim().slice(0, MAX_CHAT_LENGTH)
+					if (body === '') break
+					await this.broadcastMessage({
+						type: 'chatMessage',
+						id: crypto.randomUUID(),
+						// Their own id, never one they picked, and never a name.
+						from: connection.id,
+						body,
+						at: Date.now(),
+					})
 					break
 				}
 				case 'callsApiHistoryEntry': {
