@@ -136,10 +136,11 @@ export const Participant = forwardRef<
 	const videoMid = useMid(videoTrack)
 
 	// While the room is masked the character stands in for the camera feed.
-	// Once revealed we fall back to the usual photo/initial placeholder.
-	const character = masquerade.revealed
-		? undefined
-		: masquerade.getCharacter(user.characterId)
+	// Once revealed the camera (or the usual photo/initial placeholder) takes
+	// over, and the character shrinks into the corner — half the fun of the
+	// reveal is seeing which face somebody had been wearing.
+	const character = masquerade.getCharacter(user.characterId)
+	const maskedCharacter = masquerade.revealed ? undefined : character
 
 	return (
 		<div
@@ -154,12 +155,12 @@ export const Participant = forwardRef<
 						'relative max-w-[--participant-max-width] rounded-xl'
 					)}
 				>
-					{!isScreenShare && !user.tracks.videoEnabled && character && (
+					{!isScreenShare && !user.tracks.videoEnabled && maskedCharacter && (
 						<div className="absolute inset-0 h-full w-full">
-							<CharacterAvatar character={character} />
+							<CharacterAvatar character={maskedCharacter} />
 						</div>
 					)}
-					{!isScreenShare && !user.tracks.videoEnabled && !character && (
+					{!isScreenShare && !user.tracks.videoEnabled && !maskedCharacter && (
 						<div
 							className={cn(
 								'absolute inset-0 h-full w-full grid place-items-center'
@@ -307,6 +308,14 @@ export const Participant = forwardRef<
 							</Tooltip>
 						)}
 					</div>
+					{masquerade.revealed && !isScreenShare && character && (
+						<Tooltip content={`${character.name}でした`}>
+							<div className="absolute bottom-2 right-2 h-10 w-10 overflow-hidden rounded-md bg-zinc-900/40 ring-1 ring-white/40">
+								<CharacterAvatar character={character} />
+								<VisuallyHidden>{character.name}でした</VisuallyHidden>
+							</div>
+						</Tooltip>
+					)}
 					{(isSpeaking || user.raisedHand) && !isScreenShare && (
 						<div
 							className={cn(
