@@ -255,6 +255,13 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 							messages={messages}
 							users={users}
 							selfId={identity?.id}
+							// Only after the reveal: before it, the name in the log
+							// already is the character.
+							characterName={
+								masquerade.revealed
+									? (id) => masquerade.getCharacter(id)?.name
+									: undefined
+							}
 							onSend={sendChatMessage}
 							onClose={() => setChatOpen(false)}
 						/>
