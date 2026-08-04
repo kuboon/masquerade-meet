@@ -91,10 +91,15 @@ export const outgoingVideoTrack$ = combineLatest([
 )
 
 /**
- * What other people are told. They render the placeholder unless this is
- * true, so a picture nobody knows about would never be shown.
+ * What other people are told: whether anything worth showing is going out.
+ *
+ * Deliberately separate from whether the camera is on. The camera button
+ * toggles on the camera's own state, and a picture standing in for it must
+ * not make that button think the camera is already running — it would then
+ * only ever offer to turn it off, and there would be no way to turn it on
+ * at all.
  */
-const outgoingVideoEnabled$ = combineLatest([
+export const outgoingVideoEnabled$ = combineLatest([
 	stillImageActive$,
 	camera.isBroadcasting$,
 ]).pipe(map(([still, broadcasting]) => still || broadcasting))
@@ -233,7 +238,10 @@ export default function useUserMedia(options: {
 		videoDeviceId: useObservableAsValue(camera.activeDevice$)?.deviceId,
 		turnCameraOn: camera.startBroadcasting,
 		turnCameraOff: camera.stopBroadcasting,
-		videoEnabled: useObservableAsValue(outgoingVideoEnabled$, false),
+		/** the camera itself — what the camera button reflects and toggles */
+		videoEnabled: useObservableAsValue(camera.isBroadcasting$, false),
+		/** camera or picture: what the other participants are told to expect */
+		outgoingVideoEnabled: useObservableAsValue(outgoingVideoEnabled$, false),
 		/** true when the stored picture is standing in for the camera */
 		stillImageActive: useObservableAsValue(stillImageActive$, false),
 		videoUnavailableReason,

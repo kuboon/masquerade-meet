@@ -29,7 +29,9 @@ export default function useBroadcastStatus({
 }: Config) {
 	const {
 		audioEnabled,
-		videoEnabled,
+		// Not `videoEnabled`: that is the camera, and a picture standing in
+		// for it still has to be announced or nobody renders the track.
+		outgoingVideoEnabled: videoEnabled,
 		screenShareEnabled,
 		audioUnavailableReason,
 	} = userMedia

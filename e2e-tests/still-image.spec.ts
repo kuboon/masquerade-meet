@@ -69,3 +69,43 @@ test.describe('the still image on the wire', () => {
 			.toBeGreaterThan(0)
 	})
 })
+
+test.describe('the camera alongside the picture', () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto('/dev/still-image')
+		await page.getByLabel('変装解除後の画像（任意）').setInputFiles({
+			name: 'me.png',
+			mimeType: 'image/png',
+			buffer: RED_PNG,
+		})
+		await expect(page.getByAltText('登録した画像')).toBeVisible()
+		await page.getByRole('button', { name: 'アンマスクする' }).click()
+	})
+
+	test('does not claim the camera is on while the picture stands in', async ({
+		page,
+	}) => {
+		// The camera button toggles on this flag. Conflating "something is
+		// going out" with "the camera is running" leaves it stuck offering to
+		// turn off a camera that was never on, and no way to turn one on.
+		await expect(page.getByTestId('dbg-outgoing')).toHaveText('true')
+		await expect(page.getByTestId('dbg-broadcasting')).toHaveText('false')
+		// This is the one the button actually reads.
+		await expect(page.getByTestId('dbg-video-enabled')).toHaveText('false')
+	})
+
+	test('hands over to the camera and back', async ({ page }) => {
+		await expect(page.getByTestId('dbg-active')).toHaveText('true')
+
+		await page.getByRole('button', { name: 'カメラを使う' }).click()
+		await expect(page.getByTestId('dbg-broadcasting')).toHaveText('true')
+		await expect(page.getByTestId('dbg-video-enabled')).toHaveText('true')
+		// Turning the camera on by hand wins over the picture.
+		await expect(page.getByTestId('dbg-active')).toHaveText('false')
+		await expect(page.getByTestId('dbg-outgoing')).toHaveText('true')
+
+		await page.getByRole('button', { name: 'カメラを止める' }).click()
+		await expect(page.getByTestId('dbg-broadcasting')).toHaveText('false')
+		await expect(page.getByTestId('dbg-active')).toHaveText('true')
+	})
+})
