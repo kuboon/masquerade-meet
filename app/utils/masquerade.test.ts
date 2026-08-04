@@ -4,6 +4,7 @@ import {
 	canRestartMeeting,
 	canStartMeeting,
 	minimumParticipants,
+	nextHost,
 	restartParticipant,
 } from './masquerade'
 
@@ -52,6 +53,41 @@ describe('canRestartMeeting', () => {
 
 	it('has nothing to offer in the lobby', () => {
 		expect(canRestartMeeting('lobby')).toBe(false)
+	})
+})
+
+describe('nextHost', () => {
+	it('hands the room to whoever has been in it longest', () => {
+		// Not the order they happen to be stored in: seats are keyed by a
+		// random connection id, so storage order is a coin toss.
+		expect(
+			nextHost([
+				{ id: 'c', joinedAt: 300 },
+				{ id: 'a', joinedAt: 100 },
+				{ id: 'b', joinedAt: 200 },
+			])?.id
+		).toBe('a')
+	})
+
+	it('has nobody to promote in an empty room', () => {
+		expect(nextHost([])).toBeUndefined()
+	})
+
+	it('promotes a seat with no arrival time only as a last resort', () => {
+		// Those are seats from before arrival times were recorded, belonging to
+		// someone not seen since the room last restarted.
+		const legacy: { id: string; joinedAt?: number }[] = [{ id: 'old' }]
+		expect(nextHost([...legacy, { id: 'a', joinedAt: 100 }])?.id).toBe('a')
+		expect(nextHost(legacy)?.id).toBe('old')
+	})
+
+	it('settles a tie the same way every time', () => {
+		const tied = [
+			{ id: 'a', joinedAt: 100 },
+			{ id: 'b', joinedAt: 100 },
+		]
+		expect(nextHost(tied)?.id).toBe('a')
+		expect(nextHost([...tied])?.id).toBe('a')
 	})
 })
 

@@ -35,7 +35,20 @@ export type User = {
 }
 
 /** The shape kept in Durable Object storage. Never broadcast as-is. */
-export type StoredUser = User & { realName: string }
+export type StoredUser = User & {
+	realName: string
+	/**
+	 * When this connection was first seen in the room, on the room's clock. It
+	 * decides who picks up the host controls if the host disappears, and it
+	 * outlives the seat — the room keeps it separately, so a reload does not
+	 * send somebody to the back of the queue.
+	 *
+	 * Optional because rooms that predate it have seats without one, and kept
+	 * out of the broadcast: nobody needs to know who arrived when, and while
+	 * the room is masked that is one more thing to match a person against.
+	 */
+	joinedAt?: number
+}
 
 export type MasqueradeState = {
 	phase: RoomPhase
@@ -54,6 +67,20 @@ export type MasqueradeState = {
 	 * a Durable Object that predates this field.
 	 */
 	characterSetId: string
+	/**
+	 * Where everyone sits, by connection id, decided once when the meeting
+	 * starts and the same for everybody — a tile that moves is a tile you have
+	 * to find again, and in a game of who-is-who that is half the information
+	 * on the screen.
+	 *
+	 * Shuffled rather than in arrival order, which would put on the wire the
+	 * one thing `joinedAt` is deliberately kept off it for.
+	 *
+	 * A seat outlives whoever is in it: somebody who drops out leaves an empty
+	 * frame and gets it back when they return, rather than everyone else
+	 * shuffling along. Optional only for rooms that predate it.
+	 */
+	seats?: string[]
 }
 
 export type RoomState = {
@@ -157,6 +184,11 @@ export type ClientMessage =
 	  }
 	| {
 			type: 'restartMeeting'
+	  }
+	| {
+			/** host only, and only a seat nobody is sitting in */
+			type: 'removeSeat'
+			seatId: string
 	  }
 	| {
 			type: 'chatMessage'

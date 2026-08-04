@@ -21,7 +21,9 @@ import {
 	assignCharacters,
 	canRestartMeeting,
 	canStartMeeting,
+	nextHost,
 	restartParticipant,
+	shuffled,
 } from '~/utils/masquerade'
 
 import { eq, sql } from 'drizzle-orm'
@@ -53,6 +55,7 @@ const PHASE_KEY = 'masquerade:phase'
 const REVEAL_AT_KEY = 'masquerade:revealAt'
 const HOST_KEY = 'masquerade:hostId'
 const CHARACTER_SET_KEY = 'masquerade:characterSetId'
+const SEATS_KEY = 'masquerade:seats'
 
 /** Long enough for a real name, short enough not to break the tiles. */
 const MAX_NAME_LENGTH = 40
@@ -114,18 +117,26 @@ export class ChatRoom extends Server<Env> {
 
 		const characterSet = getCharacterSet(await this.resolveCharacterSetId(ctx))
 
+		const joinedAt = await this.firstSeenAt(connection.id)
+
 		let user = await this.ctx.storage.get<StoredUser>(
 			`session-${connection.id}`
 		)
 		const foundInStorage = user !== undefined
-		if (!foundInStorage) {
+		if (user !== undefined) {
+			user = { ...user, joinedAt }
+		} else {
 			user = {
 				id: connection.id,
+				joinedAt,
 				// The real name is kept apart from the broadcast name and only
 				// surfaces once the room has been revealed.
 				realName: username,
 				name: username,
-				characterId: await this.pickCharacterPreference(characterSet),
+				characterId: await this.pickCharacterPreference(
+					characterSet,
+					new URL(ctx.request.url).searchParams.get('want')
+				),
 				ready: false,
 				joined: false,
 				raisedHand: false,
@@ -141,6 +152,11 @@ export class ChatRoom extends Server<Env> {
 
 		// store the user's data in storage
 		await this.ctx.storage.put(`session-${connection.id}`, user)
+		// Somebody walking into a meeting already in progress needs a seat of
+		// their own. Everyone else is seated when the meeting starts.
+		if ((await this.getMasqueradeState()).phase !== 'lobby') {
+			await this.takeSeat(connection.id)
+		}
 		// the first person through the door runs the room
 		if ((await this.ctx.storage.get<string>(HOST_KEY)) === undefined) {
 			await this.ctx.storage.put(HOST_KEY, connection.id)
@@ -270,7 +286,25 @@ export class ChatRoom extends Server<Env> {
 			characterSetId:
 				(await this.ctx.storage.get<string>(CHARACTER_SET_KEY)) ??
 				defaultCharacterSetId,
+			seats: await this.getSeats(),
 		}
+	}
+
+	async getSeats(): Promise<string[]> {
+		return (await this.ctx.storage.get<string[]>(SEATS_KEY)) ?? []
+	}
+
+	/**
+	 * Puts a latecomer at the end of the seating chart.
+	 *
+	 * Only appends, never reorders: a returning participant is recognised by
+	 * the same connection id and finds their old seat still there, which is
+	 * the point of seating people at all.
+	 */
+	private async takeSeat(connectionId: string) {
+		const seats = await this.getSeats()
+		if (seats.includes(connectionId)) return
+		await this.ctx.storage.put(SEATS_KEY, [...seats, connectionId])
 	}
 
 	/**
@@ -295,6 +329,28 @@ export class ChatRoom extends Server<Env> {
 		return id
 	}
 
+	/**
+	 * When this connection was first seen in this room, ever.
+	 *
+	 * Kept apart from the seat and outlived by nothing: a seat is cleared the
+	 * moment its page goes away, so an owner who reloads out of trouble would
+	 * otherwise come back as the newest arrival and lose their place in line
+	 * for the host controls for good. This way the controls come back to them
+	 * when whoever picked them up in the meantime leaves.
+	 *
+	 * The room decides this, rather than taking the client's word for it —
+	 * otherwise anybody could claim to have been here since the beginning and
+	 * put themselves next in line. It goes away with the meeting.
+	 */
+	private async firstSeenAt(connectionId: string): Promise<number> {
+		const key = `firstSeen-${connectionId}`
+		const seen = await this.ctx.storage.get<number>(key)
+		if (seen !== undefined) return seen
+		const now = Date.now()
+		await this.ctx.storage.put(key, now)
+		return now
+	}
+
 	/** Characters already spoken for, so nobody ends up with a twin. */
 	async getTakenCharacterIds(excludeConnectionId?: string) {
 		const taken = new Set<string>()
@@ -306,18 +362,26 @@ export class ChatRoom extends Server<Env> {
 	}
 
 	/**
-	 * The character a new arrival starts out wanting.
+	 * The character a new arrival starts out wearing.
 	 *
-	 * Prefers one nobody else has picked so a room that nobody touches still
-	 * ends up varied, but falls back to any of them: preferences are allowed
-	 * to clash, and somebody arriving late should not be left with nothing
-	 * selected.
+	 * `wanted` is a returning participant asking for the face they had before
+	 * — a reload clears the seat, so without this they would come back as
+	 * somebody else mid-meeting. It is granted only if it is still free;
+	 * whoever is wearing it now was here in the meantime and keeps it.
+	 *
+	 * Otherwise one nobody has taken, at random. Undefined when there are none
+	 * left: the room is full, and two people behind the same face is worse
+	 * than one person who cannot join.
 	 */
-	async pickCharacterPreference(set: CharacterSet): Promise<string> {
+	async pickCharacterPreference(
+		set: CharacterSet,
+		wanted?: string | null
+	): Promise<string | undefined> {
 		const taken = await this.getTakenCharacterIds()
 		const free = set.characters.filter((c) => !taken.has(c.id))
-		const pool = free.length > 0 ? free : set.characters
-		return pool[Math.floor(Math.random() * pool.length)].id
+		if (wanted && free.some((c) => c.id === wanted)) return wanted
+		if (free.length === 0) return undefined
+		return free[Math.floor(Math.random() * free.length)].id
 	}
 
 	/**
@@ -328,7 +392,9 @@ export class ChatRoom extends Server<Env> {
 		const revealed = phase === 'revealed'
 		const users: User[] = []
 		for (const stored of (await this.getUsers()).values()) {
-			const { realName, ...rest } = stored
+			// Arrival times stay here too: nobody needs them, and while the
+			// room is masked they are one more thing to match a person against.
+			const { realName, joinedAt: _joinedAt, ...rest } = stored
 			users.push({
 				...rest,
 				name: revealed
@@ -348,14 +414,14 @@ export class ChatRoom extends Server<Env> {
 		const users = await this.getUsers()
 		if (hostId !== undefined && users.has(`session-${hostId}`)) return hostId
 
-		const [nextHost] = users.values()
-		if (nextHost === undefined) {
+		const successor = nextHost([...users.values()])
+		if (successor === undefined) {
 			await this.ctx.storage.delete(HOST_KEY)
 			return undefined
 		}
-		await this.ctx.storage.put(HOST_KEY, nextHost.id)
-		log({ eventName: 'hostReassigned', connectionId: nextHost.id })
-		return nextHost.id
+		await this.ctx.storage.put(HOST_KEY, successor.id)
+		log({ eventName: 'hostReassigned', connectionId: successor.id })
+		return successor.id
 	}
 
 	async broadcastRoomState() {
@@ -512,8 +578,15 @@ export class ChatRoom extends Server<Env> {
 					const character = getCharacter(characterSet, data.characterId)
 					if (!character) break
 
-					// No collision check: in the lobby a character is a wish, not
-					// a claim. Clashes are drawn for when the meeting starts.
+					// In the lobby a character is a wish, not a claim, and clashes
+					// are drawn for when the meeting starts. Once a meeting is
+					// running the draw has already happened, so a wish would put
+					// two people behind one face.
+					const { phase } = await this.getMasqueradeState()
+					if (phase !== 'lobby') {
+						const taken = await this.getTakenCharacterIds(connection.id)
+						if (taken.has(character.id)) break
+					}
 					await this.ctx.storage.put(`session-${connection.id}`, {
 						...stored,
 						characterId: character.id,
@@ -564,6 +637,15 @@ export class ChatRoom extends Server<Env> {
 							characterId: assigned.get(user.id),
 						} satisfies StoredUser)
 					}
+
+					// Where everybody sits, settled once so that every screen in
+					// the room looks the same. Shuffled, because seating people
+					// in the order they arrived would tell the room something it
+					// is not supposed to know.
+					await this.ctx.storage.put(
+						SEATS_KEY,
+						shuffled(users.map((u) => u.id))
+					)
 
 					await this.ctx.storage.put(
 						PHASE_KEY,
@@ -617,7 +699,30 @@ export class ChatRoom extends Server<Env> {
 					}
 					await this.ctx.storage.put(PHASE_KEY, 'lobby' satisfies RoomPhase)
 					await this.ctx.storage.delete(REVEAL_AT_KEY)
+					// A new round is dealt new faces, and gets a new seating
+					// chart with them.
+					await this.ctx.storage.delete(SEATS_KEY)
 					log({ eventName: 'meetingRestarted', meetingId })
+					await this.broadcastRoomState()
+					break
+				}
+				case 'removeSeat': {
+					const hostId = await this.ensureHost()
+					if (hostId !== connection.id) break
+					// Only an empty one. A seat with somebody in it is not the
+					// host's to clear, and an empty seat is only empty until its
+					// owner reloads their way back into it — so this is a
+					// decision, not a tidy-up the room should make on its own.
+					const stillHere = await this.ctx.storage.get<StoredUser>(
+						`session-${data.seatId}`
+					)
+					if (stillHere) break
+					const seats = await this.getSeats()
+					if (!seats.includes(data.seatId)) break
+					await this.ctx.storage.put(
+						SEATS_KEY,
+						seats.filter((seat) => seat !== data.seatId)
+					)
 					await this.broadcastRoomState()
 					break
 				}

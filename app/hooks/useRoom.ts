@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ClientMessage, RoomState, ServerMessage } from '~/types/Messages'
 import { defaultCharacterSetId } from '~/utils/characterSets'
+import {
+	rememberCharacter,
+	rememberedCharacter,
+} from '~/utils/rememberedCharacter'
 
 import { nanoid } from 'nanoid'
 import usePartySocket from 'partysocket/react'
@@ -66,12 +70,24 @@ export default function useRoom({
 
 	const connectionId = useStableConnectionId(roomName)
 
+	// Read once, on the way in. The socket's memo key includes the query, so a
+	// value that changed as the room went along would reconnect the socket.
+	const query = useMemo(() => {
+		const wanted = rememberedCharacter(roomName)
+		return {
+			// Read by the Durable Object only when it is opening a brand new room.
+			...(characterSetId ? { set: characterSetId } : {}),
+			// Asked for on the way in rather than corrected afterwards, so that
+			// nobody watches a returning participant change face.
+			...(wanted ? { want: wanted } : {}),
+		}
+	}, [roomName, characterSetId])
+
 	const websocket = usePartySocket({
 		id: connectionId,
 		party: 'rooms',
 		room: roomName,
-		// Read by the Durable Object only when it is opening a brand new room.
-		query: characterSetId ? { set: characterSetId } : {},
+		query,
 		onMessage: (e) => {
 			const message = JSON.parse(e.data) as ServerMessage
 			switch (message.type) {
@@ -140,6 +156,15 @@ export default function useRoom({
 		() => roomState.users.find((u) => u.id === websocket.id),
 		[roomState.users, websocket.id]
 	)
+
+	// Whatever face this browser is wearing right now, so that it can ask for
+	// the same one back. Written on every change rather than only on picking:
+	// the draw at the start of a meeting can hand out a different character
+	// than the one that was wished for, and that is the one to come back as.
+	const characterId = identity?.characterId
+	useEffect(() => {
+		if (characterId) rememberCharacter(roomName, characterId)
+	}, [roomName, characterId])
 
 	const otherUsers = useMemo(
 		() => roomState.users.filter((u) => u.id !== websocket.id && u.joined),

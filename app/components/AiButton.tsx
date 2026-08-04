@@ -1,10 +1,9 @@
 import { useRoomContext } from '~/hooks/useRoomContext'
-import type { ClientMessage, User } from '~/types/Messages'
+import type { ClientMessage } from '~/types/Messages'
 import { AiPushToTalkButtion } from './AiPushToTalkButton'
 import { Button } from './Button'
 import { Trigger } from './Dialog'
 import { InviteAiDialog } from './InviteAiDialog'
-import { RecordAiVoiceActivity } from './RecordAiVoiceActivity'
 
 function RemoveAiButton() {
 	const {
@@ -25,7 +24,7 @@ function RemoveAiButton() {
 	)
 }
 
-export function AiButton(props: { recordActivity: (user: User) => void }) {
+export function AiButton() {
 	const {
 		room: {
 			roomState: {
@@ -44,10 +43,6 @@ export function AiButton(props: { recordActivity: (user: User) => void }) {
 				<>
 					<RemoveAiButton />
 					<AiPushToTalkButtion />
-					<RecordAiVoiceActivity
-						user={aiUser}
-						recordActivity={props.recordActivity}
-					/>
 				</>
 			) : (
 				<InviteAiDialog>

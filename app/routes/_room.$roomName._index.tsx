@@ -192,6 +192,20 @@ export default function Lobby() {
 					disabled={ready}
 				/>
 
+				{meetingStarted && !character && (
+					// The room hands out a character on arrival and only comes up
+					// empty when every one of them is spoken for. In the lobby that
+					// is nothing to worry about — the meeting simply cannot start
+					// over capacity — but with a meeting already running there is
+					// no face left to walk in behind.
+					<div className="rounded-md bg-zinc-200 p-3 text-sm text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">
+						<p>
+							ミーティングが進行中で、空いているキャラクターがありません。
+							誰かが退出すると参加できます。
+						</p>
+					</div>
+				)}
+
 				{sessionError && (
 					<div className="rounded-md bg-red-200 p-3 text-sm text-zinc-800 dark:bg-red-700 dark:text-zinc-200">
 						{sessionError}

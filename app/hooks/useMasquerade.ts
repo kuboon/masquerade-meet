@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
 import { getCharacter, getCharacterSet } from '~/utils/characterSets'
 import { neutralVoice } from '~/utils/characters'
@@ -24,7 +24,7 @@ export default function useMasquerade({
 	userMedia: UserMedia
 }) {
 	const { roomState, identity, send } = room
-	const { phase, hostId, revealAt, serverNow, characterSetId } =
+	const { phase, hostId, revealAt, serverNow, characterSetId, seats } =
 		roomState.masquerade
 
 	const isHost = Boolean(identity && hostId === identity.id)
@@ -113,6 +113,12 @@ export default function useMasquerade({
 		/** the roster this room is hiding behind */
 		characterSet,
 		/**
+		 * Who sits where, by connection id. The same on every screen, and
+		 * unchanged by anybody coming or going — an empty seat stays empty
+		 * until its owner returns or the host clears it.
+		 */
+		seats: useMemo(() => seats ?? [], [seats]),
+		/**
 		 * Resolve a character within this room's set. Handed out so components
 		 * deeper in the tree do not have to be passed the set itself.
 		 */
@@ -144,6 +150,10 @@ export default function useMasquerade({
 		startMeeting: useCallback(() => send({ type: 'startMeeting' }), [send]),
 		startReveal: useCallback(() => send({ type: 'startReveal' }), [send]),
 		restartMeeting: useCallback(() => send({ type: 'restartMeeting' }), [send]),
+		removeSeat: useCallback(
+			(seatId: string) => send({ type: 'removeSeat', seatId }),
+			[send]
+		),
 	}
 }
 
