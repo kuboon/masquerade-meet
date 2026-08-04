@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
 	characterSets,
@@ -67,6 +69,24 @@ for (const set of characterSets) {
 			expect(new Set(characters.map((c) => c.name)).size).toBe(
 				characters.length
 			)
+		})
+
+		it('keeps every character its own artwork inside the set folder', () => {
+			// The extension is left open — a set drawn by hand may well ship
+			// PNGs — but a character must not borrow another set's picture.
+			for (const { id, image } of set.characters) {
+				expect(image, id).toMatch(
+					new RegExp(`^/characters/${set.id}/${id}\\.[a-z]+$`)
+				)
+			}
+		})
+
+		it('has that artwork on disk', () => {
+			// Adding a set and forgetting the art is otherwise silent until a
+			// meeting is under way and everyone is a blank square.
+			for (const { id, image } of set.characters) {
+				expect(existsSync(join(process.cwd(), 'public', image)), id).toBe(true)
+			}
 		})
 
 		it('keeps pitch ratios inside the worklet parameter range', () => {

@@ -6,53 +6,12 @@
  * import them without a cycle.
  *
  * Every character bundles two things:
- *  - a look (`face`), rendered as a parametric SVG by `CharacterAvatar`
+ *  - a look (`image`), an artwork file under `public/characters/<set>/`
  *  - a voice (`voice`), fed to the voice changer worklet + EQ chain
  *
  * Pitch ratios are deliberately spread across a wide range so that two
  * players are never mistaken for one another.
  */
-
-export type HeadShape = 'round' | 'oval' | 'egg' | 'square' | 'ghost'
-export type EarShape =
-	| 'none'
-	| 'round'
-	| 'pointy'
-	| 'long'
-	| 'horns'
-	| 'antenna'
-	| 'tuft'
-export type EyeShape =
-	| 'dot'
-	| 'round'
-	| 'sleepy'
-	| 'wide'
-	| 'bulge'
-	| 'visor'
-	| 'star'
-export type MouthShape =
-	| 'none'
-	| 'smile'
-	| 'beak'
-	| 'wide'
-	| 'fang'
-	| 'grid'
-	| 'ooo'
-
-export interface FaceSpec {
-	head: HeadShape
-	ears: EarShape
-	eyes: EyeShape
-	mouth: MouthShape
-	/** light coloured snout behind the mouth */
-	muzzle?: boolean
-	/** blushed cheeks */
-	cheeks?: boolean
-	/** dark patches around the eyes, raccoon style */
-	mask?: boolean
-	/** ring of fur or wool behind the head */
-	mane?: boolean
-}
 
 export interface VoiceParams {
 	/** playback ratio of the granular pitch shifter. 1 = untouched */
@@ -82,14 +41,8 @@ export interface Character {
 	emoji: string
 	/** one line of flavour text shown in the picker */
 	tagline: string
-	colors: {
-		base: string
-		dark: string
-		light: string
-		accent: string
-		bg: string
-	}
-	face: FaceSpec
+	/** public path of the artwork, e.g. '/characters/animals/bear.svg' */
+	image: string
 	voice: VoiceParams
 }
 
