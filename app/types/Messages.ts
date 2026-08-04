@@ -121,6 +121,11 @@ export type ClientMessage =
 			type: 'heartbeat'
 	  }
 	| {
+			type: 'setDisplayName'
+			/** the real name, shown to everyone only once the masks come off */
+			name: string
+	  }
+	| {
 			type: 'selectCharacter'
 			characterId: string
 	  }

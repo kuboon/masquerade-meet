@@ -131,6 +131,10 @@ export default function useMasquerade({
 			(characterId: string) => send({ type: 'selectCharacter', characterId }),
 			[send]
 		),
+		setDisplayName: useCallback(
+			(name: string) => send({ type: 'setDisplayName', name }),
+			[send]
+		),
 		setReady: useCallback(
 			(ready: boolean) => send({ type: 'setReady', ready }),
 			[send]

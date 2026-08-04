@@ -9,13 +9,13 @@ export default function Index() {
 	const navigate = useNavigate()
 
 	return (
-		<div className="mx-auto flex h-full flex-col items-center justify-center p-4">
+		<div className="mx-auto flex min-h-full flex-col items-center justify-center p-4">
 			<div className="flex-1"></div>
 			<div className="max-w-prose space-y-6">
 				<div className="space-y-3">
 					<h1 className="text-3xl font-bold">🎭 マスカレード</h1>
 					<p className="text-lg text-zinc-600 dark:text-zinc-300">
-						キャラクターに変装して話す、正体あてミーティング。
+						誰が誰だかわからない オンライン仮面ミーティング
 					</p>
 					<ul className="space-y-1 text-sm text-zinc-500 dark:text-zinc-400">
 						<li>
@@ -29,15 +29,8 @@ export default function Index() {
 							声はブラウザの中で変換されるので、生の声はサーバーにも他の参加者にも届きません。
 							カメラも配信されず、名前もキャラクター名しか表示されません。
 						</li>
-						<li>
-							頃合いを見て管理者が合図すると、5
-							秒のカウントダウンののち全員の変装が一斉に解けます。
-							そこで初めて、誰が誰だったのかが分かります。
-						</li>
+						<li>最後は一斉にアンマスク。意外な一面にびっくりするかも？</li>
 					</ul>
-					<p className="text-sm text-zinc-500 dark:text-zinc-400">
-						名前とキャラクターはルームに入ってから決めます。
-					</p>
 				</div>
 
 				<Form
