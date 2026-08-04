@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
-import { getCharacter, neutralVoice } from '~/utils/characters'
+import { getCharacter, getCharacterSet } from '~/utils/characterSets'
+import { neutralVoice } from '~/utils/characters'
+import { canStartMeeting } from '~/utils/masquerade'
 import { setVoiceParams } from '~/utils/voiceChanger'
 import type useRoom from './useRoom'
 import type { UserMedia } from './useUserMedia'
@@ -21,10 +23,12 @@ export default function useMasquerade({
 	userMedia: UserMedia
 }) {
 	const { roomState, identity, send } = room
-	const { phase, hostId, revealAt, serverNow } = roomState.masquerade
+	const { phase, hostId, revealAt, serverNow, characterSetId } =
+		roomState.masquerade
 
 	const isHost = Boolean(identity && hostId === identity.id)
-	const character = getCharacter(identity?.characterId)
+	const characterSet = getCharacterSet(characterSetId)
+	const character = getCharacter(characterSet, identity?.characterId)
 
 	// Translate the server's deadline onto this machine's clock. Only the
 	// interval between revealAt and serverNow matters, so a wrong system clock
@@ -107,9 +111,21 @@ export default function useMasquerade({
 		isHost,
 		hostId,
 		character,
+		/** the roster this room is hiding behind */
+		characterSet,
+		/**
+		 * Resolve a character within this room's set. Handed out so components
+		 * deeper in the tree do not have to be passed the set itself.
+		 */
+		getCharacter: useCallback(
+			(characterId?: string) => getCharacter(characterSet, characterId),
+			[characterSet]
+		),
 		participants,
 		takenCharacterIds,
 		everyoneReady,
+		/** the same rule the room enforces, so the button cannot over-promise */
+		canStart: canStartMeeting(participants),
 		readyCount: participants.filter((u) => u.ready).length,
 		/** the meeting is under way — the lobby should hand over to the room */
 		meetingStarted: phase !== 'lobby',

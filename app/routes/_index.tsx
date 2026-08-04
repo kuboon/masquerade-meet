@@ -3,11 +3,13 @@ import { json, redirect } from '@remix-run/cloudflare'
 import { Form, useLoaderData, useNavigate } from '@remix-run/react'
 import { nanoid } from 'nanoid'
 import invariant from 'tiny-invariant'
-import { Button, ButtonLink } from '~/components/Button'
+import { Button } from '~/components/Button'
+import { CharacterSetChooser } from '~/components/CharacterSetChooser'
 import { Disclaimer } from '~/components/Disclaimer'
 import { Input } from '~/components/Input'
 import { Label } from '~/components/Label'
 import { useUserMetadata } from '~/hooks/useUserMetadata'
+import { characterSets } from '~/utils/characterSets'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
 import getUsername from '~/utils/getUsername.server'
 
@@ -53,23 +55,27 @@ export default function Index() {
 						)}
 					</div>
 				</div>
-				<div>
-					<ButtonLink
-						to="/new"
-						className="text-sm"
-						onClick={(e) => {
-							// We shouldn't need a whole server visit to start a new room,
-							// so let's just do a redirect here
-							e.preventDefault()
-							navigate(`/${nanoid(8)}`)
-							// if someone clicks the link to create a new room
-							// before the js has loaded then we'll use a server side redirect
-							// (in new.tsx) to send the user to a new room
-						}}
-					>
+				<Form
+					method="get"
+					action="/new"
+					className="space-y-4"
+					onSubmit={(e) => {
+						// We shouldn't need a whole server visit to start a new room,
+						// so let's just do a redirect here
+						e.preventDefault()
+						const set = new FormData(e.currentTarget).get('set')
+						navigate(
+							`/${nanoid(8)}` + (typeof set === 'string' ? `?set=${set}` : '')
+						)
+						// if someone submits this before the js has loaded then the
+						// browser posts to /new, which does the same redirect server side
+					}}
+				>
+					{characterSets.length > 1 && <CharacterSetChooser />}
+					<Button className="text-sm" type="submit">
 						あたらしいルームを作る
-					</ButtonLink>
-				</div>
+					</Button>
+				</Form>
 				<details className="cursor-pointer">
 					<summary className="text-zinc-500 dark:text-zinc-400">
 						ルーム名を入力して参加する

@@ -10,8 +10,15 @@ import type {
 import { assertError } from '~/utils/assertError'
 import assertNever from '~/utils/assertNever'
 import { assertNonNullable } from '~/utils/assertNonNullable'
-import { characters, getCharacter } from '~/utils/characters'
+import {
+	defaultCharacterSetId,
+	getCharacter,
+	getCharacterSet,
+	isCharacterSetId,
+} from '~/utils/characterSets'
+import type { CharacterSet } from '~/utils/characters'
 import getUsername from '~/utils/getUsername.server'
+import { canStartMeeting } from '~/utils/masquerade'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -41,6 +48,7 @@ export const revealCountdownMs = 5_000
 const PHASE_KEY = 'masquerade:phase'
 const REVEAL_AT_KEY = 'masquerade:revealAt'
 const HOST_KEY = 'masquerade:hostId'
+const CHARACTER_SET_KEY = 'masquerade:characterSetId'
 
 /**
  * The ChatRoom Durable Object Class
@@ -93,6 +101,8 @@ export class ChatRoom extends Server<Env> {
 		const username = await getUsername(ctx.request)
 		assertNonNullable(username)
 
+		const characterSet = getCharacterSet(await this.resolveCharacterSetId(ctx))
+
 		let user = await this.ctx.storage.get<StoredUser>(
 			`session-${connection.id}`
 		)
@@ -104,7 +114,7 @@ export class ChatRoom extends Server<Env> {
 				// surfaces once the room has been revealed.
 				realName: username,
 				name: username,
-				characterId: await this.pickFreeCharacterId(),
+				characterId: await this.pickFreeCharacterId(characterSet),
 				ready: false,
 				joined: false,
 				raisedHand: false,
@@ -246,7 +256,32 @@ export class ChatRoom extends Server<Env> {
 			hostId: await this.ctx.storage.get<string>(HOST_KEY),
 			revealAt,
 			serverNow: now,
+			characterSetId:
+				(await this.ctx.storage.get<string>(CHARACTER_SET_KEY)) ??
+				defaultCharacterSetId,
 		}
+	}
+
+	/**
+	 * Settles which set of faces this room wears, once and for all.
+	 *
+	 * Only the connection that opens the room has a say. A room that already
+	 * has people in it has already handed out characters from some roster, so
+	 * a latecomer editing `?set=` in the URL must not be able to swap
+	 * everyone's faces out from under them — including in a room that predates
+	 * this field and therefore has nothing pinned.
+	 */
+	private async resolveCharacterSetId(ctx: ConnectionContext): Promise<string> {
+		const pinned = await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+		if (pinned !== undefined) return pinned
+
+		const firstThroughTheDoor = (await this.getUsers()).size === 0
+		const requested = firstThroughTheDoor
+			? new URL(ctx.request.url).searchParams.get('set')
+			: null
+		const id = isCharacterSetId(requested) ? requested : defaultCharacterSetId
+		await this.ctx.storage.put(CHARACTER_SET_KEY, id)
+		return id
 	}
 
 	/** Characters already spoken for, so nobody ends up with a twin. */
@@ -259,9 +294,9 @@ export class ChatRoom extends Server<Env> {
 		return taken
 	}
 
-	async pickFreeCharacterId(): Promise<string | undefined> {
+	async pickFreeCharacterId(set: CharacterSet): Promise<string | undefined> {
 		const taken = await this.getTakenCharacterIds()
-		const available = characters.filter((c) => !taken.has(c.id))
+		const available = set.characters.filter((c) => !taken.has(c.id))
 		if (available.length === 0) return undefined
 		return available[Math.floor(Math.random() * available.length)].id
 	}
@@ -270,7 +305,7 @@ export class ChatRoom extends Server<Env> {
 	 * Strips everything the other participants aren't supposed to know yet.
 	 * Real names are swapped for character names until the room is revealed.
 	 */
-	async getPublicUsers(phase: RoomPhase): Promise<User[]> {
+	async getPublicUsers(phase: RoomPhase, set: CharacterSet): Promise<User[]> {
 		const revealed = phase === 'revealed'
 		const users: User[] = []
 		for (const stored of (await this.getUsers()).values()) {
@@ -279,7 +314,7 @@ export class ChatRoom extends Server<Env> {
 				...rest,
 				name: revealed
 					? realName
-					: (getCharacter(stored.characterId)?.name ?? '???'),
+					: (getCharacter(set, stored.characterId)?.name ?? '???'),
 			})
 		}
 		return users
@@ -314,6 +349,7 @@ export class ChatRoom extends Server<Env> {
 			(await this.ctx.storage.get<string>('ai:trackName')) ?? undefined
 		await this.ensureHost()
 		const masquerade = await this.getMasqueradeState()
+		const characterSet = getCharacterSet(masquerade.characterSetId)
 		const roomState = {
 			type: 'roomState',
 			state: {
@@ -329,7 +365,7 @@ export class ChatRoom extends Server<Env> {
 				},
 				meetingId,
 				users: [
-					...(await this.getPublicUsers(masquerade.phase)),
+					...(await this.getPublicUsers(masquerade.phase, characterSet)),
 					...(aiEnabled
 						? [
 								{
@@ -435,7 +471,10 @@ export class ChatRoom extends Server<Env> {
 						`session-${connection.id}`
 					)
 					if (!stored) break
-					const character = getCharacter(data.characterId)
+					const characterSet = getCharacterSet(
+						await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+					)
+					const character = getCharacter(characterSet, data.characterId)
 					if (!character) break
 
 					const taken = await this.getTakenCharacterIds(connection.id)
@@ -475,8 +514,10 @@ export class ChatRoom extends Server<Env> {
 					if (phase !== 'lobby') break
 
 					const users = [...(await this.getUsers()).values()]
-					// "everyone is here" is the whole point — don't start early.
-					if (users.length === 0 || users.some((u) => !u.ready)) break
+					// "everyone is here" is the whole point — don't start early,
+					// and don't start a masquerade the host would be attending
+					// alone.
+					if (!canStartMeeting(users)) break
 
 					await this.ctx.storage.put(
 						PHASE_KEY,

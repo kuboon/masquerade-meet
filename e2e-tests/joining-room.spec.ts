@@ -30,7 +30,7 @@ test('two users meet in disguise and are then revealed', async ({
 
 	// while masked, cameras stay dark and the tiles show character artwork
 	await expect
-		.poll(async () => host.locator('svg[role="img"]').count(), {
+		.poll(async () => host.locator('img[src^="/characters/"]').count(), {
 			timeout: 10_000,
 		})
 		.toBeGreaterThanOrEqual(2)

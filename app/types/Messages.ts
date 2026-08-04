@@ -47,6 +47,13 @@ export type MasqueradeState = {
 	 */
 	revealAt?: number
 	serverNow: number
+	/**
+	 * Which roster this room is hiding behind. Decided by whoever opened the
+	 * room and fixed from then on — everybody has to be wearing faces from the
+	 * same set. Read it through `getCharacterSet`, which tolerates a value from
+	 * a Durable Object that predates this field.
+	 */
+	characterSetId: string
 }
 
 export type RoomState = {

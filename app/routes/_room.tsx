@@ -1,6 +1,11 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
-import { Outlet, useLoaderData, useParams } from '@remix-run/react'
+import {
+	Outlet,
+	useLoaderData,
+	useParams,
+	useSearchParams,
+} from '@remix-run/react'
 import { useObservableAsValue, useValueAsObservable } from 'partytracks/react'
 import { useEffect, useMemo, useState } from 'react'
 import { of } from 'rxjs'
@@ -100,8 +105,15 @@ function RoomPreparation(props: {
 }) {
 	const { roomName } = useParams()
 	invariant(roomName)
+	const [searchParams] = useSearchParams()
 	const userMedia = useUserMedia(props)
-	const room = useRoom({ roomName, userMedia })
+	const room = useRoom({
+		roomName,
+		userMedia,
+		// Whoever follows the invite link first opens the room, so the set
+		// travels in the URL. Everyone after them is told what it is.
+		characterSetId: searchParams.get('set') ?? undefined,
+	})
 
 	return room.roomState.meetingId ? (
 		<Room room={room} userMedia={userMedia} />

@@ -20,6 +20,7 @@ import { Tooltip } from '~/components/Tooltip'
 import { useRoomContext } from '~/hooks/useRoomContext'
 import { useRoomUrl } from '~/hooks/useRoomUrl'
 import getUsername from '~/utils/getUsername.server'
+import { minimumParticipants } from '~/utils/masquerade'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const username = await getUsername(request)
@@ -62,9 +63,11 @@ export default function Lobby() {
 
 	const {
 		character,
+		characterSet,
 		participants,
 		takenCharacterIds,
 		everyoneReady,
+		canStart,
 		readyCount,
 		isHost,
 		meetingStarted,
@@ -90,6 +93,16 @@ export default function Lobby() {
 	}, [characterTaken, clearCharacterTaken])
 
 	const waitingOn = participants.filter((u) => !u.ready).length
+	const missingParticipants = minimumParticipants - participants.length
+	// Being short of people and being short of ready people are different
+	// problems, and telling the host "0人の準備待ち" when they are simply alone
+	// would send them looking for a bug that isn't there.
+	const startHint =
+		missingParticipants > 0
+			? `ミーティング開始にはあと${missingParticipants}人の参加が必要です`
+			: everyoneReady
+				? '全員そろいました'
+				: `あと${waitingOn}人の準備を待っています`
 
 	return (
 		<div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
@@ -138,7 +151,7 @@ export default function Lobby() {
 						<p className="text-sm text-zinc-500 dark:text-zinc-400">
 							{character
 								? character.tagline
-								: '空いているキャラクターがありません。1ルームの定員は15人です。'}
+								: `空いているキャラクターがありません。1ルームの定員は${characterSet.characters.length}人です。`}
 						</p>
 					</div>
 				</div>
@@ -153,6 +166,7 @@ export default function Lobby() {
 						)}
 					</div>
 					<CharacterPicker
+						characters={characterSet.characters}
 						selectedId={character?.id}
 						takenIds={takenCharacterIds}
 						disabled={ready}
@@ -194,15 +208,9 @@ export default function Lobby() {
 						{ready ? '準備完了を取り消す' : '準備完了'}
 					</Button>
 					{isHost && !meetingStarted && (
-						<Tooltip
-							content={
-								everyoneReady
-									? '全員そろいました'
-									: `あと${waitingOn}人の準備を待っています`
-							}
-						>
+						<Tooltip content={startHint}>
 							<span>
-								<Button onClick={startMeeting} disabled={!everyoneReady}>
+								<Button onClick={startMeeting} disabled={!canStart}>
 									ミーティング開始
 								</Button>
 							</span>
@@ -217,9 +225,11 @@ export default function Lobby() {
 
 				{ready && !meetingStarted && (
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">
-						{isHost
-							? '全員の準備が終わったら「ミーティング開始」を押してください。'
-							: 'ルーム管理者がミーティングを開始するのを待っています…'}
+						{!isHost
+							? 'ルーム管理者がミーティングを開始するのを待っています…'
+							: missingParticipants > 0
+								? `ミーティング開始には${minimumParticipants}人以上必要です。URLを共有して招待してください。`
+								: '全員の準備が終わったら「ミーティング開始」を押してください。'}
 					</p>
 				)}
 

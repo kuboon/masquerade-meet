@@ -80,6 +80,7 @@
 		"better-sqlite3": "^11.3.0",
 		"del-cli": "^5.1.0",
 		"drizzle-kit": "^0.24.2",
+		"esbuild": "^0.23.0",
 		"eslint": "^8.56.0",
 		"git-format-staged": "^3.1.1",
 		"msw": "^2.3.5",
