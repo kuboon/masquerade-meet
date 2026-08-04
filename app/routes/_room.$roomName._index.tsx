@@ -101,7 +101,7 @@ export default function Lobby() {
 					: `あと${waitingOn}人の準備を待っています`
 
 	return (
-		<div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
+		<div className="mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
 			<div className="w-full space-y-4">
 				<div>
 					<h1 className="text-3xl font-bold">{roomName}</h1>

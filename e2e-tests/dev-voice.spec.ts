@@ -15,8 +15,14 @@ test('records a loop and disguises it', async ({ page }) => {
 	// Nothing to play until something has been recorded.
 	await expect(page.getByRole('button', { name: 'ループ再生' })).toBeDisabled()
 
+	// Let the recording run its full length and stop itself rather than
+	// cutting it short: on a slow runner an early stop can leave a blob too
+	// short to decode, which the page reports instead of enabling playback.
 	await page.getByRole('button', { name: '自分の声を録音' }).click()
-	await page.getByRole('button', { name: '停止' }).click()
+	await expect(page.getByRole('button', { name: '停止' })).toBeVisible()
+	await expect(
+		page.getByRole('button', { name: '自分の声を録音' })
+	).toBeVisible({ timeout: 20_000 })
 	await expect(page.getByRole('button', { name: 'ループ再生' })).toBeEnabled({
 		timeout: 10_000,
 	})

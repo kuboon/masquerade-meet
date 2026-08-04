@@ -9,7 +9,7 @@ export default function Index() {
 	const navigate = useNavigate()
 
 	return (
-		<div className="mx-auto flex h-full flex-col items-center justify-center p-4">
+		<div className="mx-auto flex min-h-full flex-col items-center justify-center p-4">
 			<div className="flex-1"></div>
 			<div className="max-w-prose space-y-6">
 				<div className="space-y-3">

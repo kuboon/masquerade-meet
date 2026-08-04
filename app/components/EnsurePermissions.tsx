@@ -39,7 +39,7 @@ export function EnsurePermissions(props: EnsurePermissionsProps) {
 
 	if (permissionState === 'denied') {
 		return (
-			<div className="grid items-center h-full">
+			<div className="grid min-h-full items-center">
 				<div className="mx-auto space-y-2 max-w-80">
 					<h1 className="text-2xl font-bold">権限が拒否されました</h1>
 					<p>ブラウザの設定からマイクとカメラの権限を許可し直してください。</p>
@@ -50,7 +50,7 @@ export function EnsurePermissions(props: EnsurePermissionsProps) {
 
 	if (permissionState === 'prompt') {
 		return (
-			<div className="grid items-center h-full">
+			<div className="grid min-h-full items-center">
 				<div className="mx-auto max-w-80">
 					<p className="mb-8">
 						マスカレードを使うには、カメラとマイクの権限が必要です。次の操作でブラウザが許可を求めます。

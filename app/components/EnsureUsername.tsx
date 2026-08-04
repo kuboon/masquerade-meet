@@ -31,7 +31,7 @@ export function EnsureUsername({
 	if (username) return <>{children}</>
 
 	return (
-		<div className="mx-auto flex h-full max-w-prose flex-col justify-center gap-6 p-4">
+		<div className="mx-auto flex min-h-full max-w-prose flex-col justify-center gap-6 p-4">
 			<div className="space-y-2">
 				<h1 className="text-2xl font-bold">🎭 マスカレード</h1>
 				<p className="text-sm text-zinc-600 dark:text-zinc-300">
