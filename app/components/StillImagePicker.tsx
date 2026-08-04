@@ -7,13 +7,25 @@ import { Label } from './Label'
 /**
  * Registers the picture shown in place of the camera after the reveal.
  *
- * Saved as soon as it is picked rather than on submit: the name form is a
- * real POST, and the reload would otherwise throw the choice away.
+ * The file input is deliberately kept out of sight once there is a picture.
+ * A browser will not report a previously stored file as "chosen", so an
+ * input sitting next to a thumbnail says "no file selected" underneath the
+ * very picture it is describing — which reads as "this did not save".
  */
 export function StillImagePicker({ className }: { className?: string }) {
 	const image = useObservableAsValue(stillImage$, null)
 	const inputRef = useRef<HTMLInputElement>(null)
 	const [error, setError] = useState<string>()
+
+	const choose = async (file: File | undefined) => {
+		if (!file) return
+		setError(undefined)
+		try {
+			setStillImage(await fileToDataUrl(file))
+		} catch (err) {
+			setError('画像を読み込めませんでした: ' + String(err))
+		}
+	}
 
 	return (
 		<div className={className}>
@@ -35,30 +47,40 @@ export function StillImagePicker({ className }: { className?: string }) {
 					id="still-image"
 					type="file"
 					accept="image/*"
-					className="text-xs file:mr-2 file:rounded file:border-0 file:bg-zinc-200 file:px-2 file:py-1 file:text-xs dark:file:bg-zinc-700 dark:file:text-zinc-100"
-					onChange={async (e) => {
-						const file = e.currentTarget.files?.[0]
-						if (!file) return
-						setError(undefined)
-						try {
-							setStillImage(await fileToDataUrl(file))
-						} catch (err) {
-							setError('画像を読み込めませんでした: ' + String(err))
-						}
-					}}
+					// Hidden rather than removed once something is registered, so
+					// the label and the "変更" button below still have it to drive.
+					className={
+						image
+							? 'sr-only'
+							: 'text-xs file:mr-2 file:rounded file:border-0 file:bg-zinc-200 file:px-2 file:py-1 file:text-xs dark:file:bg-zinc-700 dark:file:text-zinc-100'
+					}
+					onChange={(e) => choose(e.currentTarget.files?.[0])}
 				/>
 				{image && (
-					<Button
-						type="button"
-						displayType="secondary"
-						className="text-xs"
-						onClick={() => {
-							setStillImage(null)
-							if (inputRef.current) inputRef.current.value = ''
-						}}
-					>
-						削除
-					</Button>
+					<>
+						<p className="text-xs text-green-700 dark:text-green-400">
+							登録済み
+						</p>
+						<Button
+							type="button"
+							displayType="secondary"
+							className="text-xs"
+							onClick={() => inputRef.current?.click()}
+						>
+							変更
+						</Button>
+						<Button
+							type="button"
+							displayType="secondary"
+							className="text-xs"
+							onClick={() => {
+								setStillImage(null)
+								if (inputRef.current) inputRef.current.value = ''
+							}}
+						>
+							削除
+						</Button>
+					</>
 				)}
 			</div>
 			{error && <p className="pt-1 text-xs text-red-500">{error}</p>}
