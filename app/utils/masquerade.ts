@@ -45,6 +45,31 @@ export function canRestartMeeting(phase: RoomPhase): boolean {
 }
 
 /**
+ * Who takes over the host controls when the host is gone.
+ *
+ * The longest-standing participant: they have seen the most of the room, and
+ * of the arbitrary rules available it is the one people can predict. Ties, and
+ * seats from before arrival times were recorded, fall back to the order the
+ * room hands them over in — a seat with no arrival time belongs to somebody
+ * who has not been seen since the room last restarted, so it goes last rather
+ * than inheriting the room.
+ */
+export function nextHost<T extends { joinedAt?: number }>(
+	users: T[]
+): T | undefined {
+	let earliest: T | undefined
+	for (const user of users) {
+		if (
+			earliest === undefined ||
+			(user.joinedAt ?? Infinity) < (earliest.joinedAt ?? Infinity)
+		) {
+			earliest = user
+		}
+	}
+	return earliest
+}
+
+/**
  * A participant as they go back into the lobby for another round.
  *
  * Everything about the round that just finished is dropped, but the name

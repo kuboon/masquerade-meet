@@ -35,7 +35,19 @@ export type User = {
 }
 
 /** The shape kept in Durable Object storage. Never broadcast as-is. */
-export type StoredUser = User & { realName: string }
+export type StoredUser = User & {
+	realName: string
+	/**
+	 * When this seat was first taken, on the room's clock. Survives a reload —
+	 * the seat is keyed by a connection id that does — and decides who picks up
+	 * the host controls if the host disappears.
+	 *
+	 * Optional because rooms that predate it have seats without one, and kept
+	 * out of the broadcast: nobody needs to know who arrived when, and while
+	 * the room is masked that is one more thing to match a person against.
+	 */
+	joinedAt?: number
+}
 
 export type MasqueradeState = {
 	phase: RoomPhase

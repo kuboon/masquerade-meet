@@ -21,6 +21,7 @@ import {
 	assignCharacters,
 	canRestartMeeting,
 	canStartMeeting,
+	nextHost,
 	restartParticipant,
 } from '~/utils/masquerade'
 
@@ -118,9 +119,15 @@ export class ChatRoom extends Server<Env> {
 			`session-${connection.id}`
 		)
 		const foundInStorage = user !== undefined
-		if (!foundInStorage) {
+		if (user !== undefined) {
+			// A seat stored before arrival times were recorded. Stamping it on
+			// the way back in is as close as the room can get; the alternative
+			// is a seat that can never inherit the host controls.
+			user = { ...user, joinedAt: user.joinedAt ?? Date.now() }
+		} else {
 			user = {
 				id: connection.id,
+				joinedAt: Date.now(),
 				// The real name is kept apart from the broadcast name and only
 				// surfaces once the room has been revealed.
 				realName: username,
@@ -328,7 +335,9 @@ export class ChatRoom extends Server<Env> {
 		const revealed = phase === 'revealed'
 		const users: User[] = []
 		for (const stored of (await this.getUsers()).values()) {
-			const { realName, ...rest } = stored
+			// Arrival times stay here too: nobody needs them, and while the
+			// room is masked they are one more thing to match a person against.
+			const { realName, joinedAt: _joinedAt, ...rest } = stored
 			users.push({
 				...rest,
 				name: revealed
@@ -348,14 +357,14 @@ export class ChatRoom extends Server<Env> {
 		const users = await this.getUsers()
 		if (hostId !== undefined && users.has(`session-${hostId}`)) return hostId
 
-		const [nextHost] = users.values()
-		if (nextHost === undefined) {
+		const successor = nextHost([...users.values()])
+		if (successor === undefined) {
 			await this.ctx.storage.delete(HOST_KEY)
 			return undefined
 		}
-		await this.ctx.storage.put(HOST_KEY, nextHost.id)
-		log({ eventName: 'hostReassigned', connectionId: nextHost.id })
-		return nextHost.id
+		await this.ctx.storage.put(HOST_KEY, successor.id)
+		log({ eventName: 'hostReassigned', connectionId: successor.id })
+		return successor.id
 	}
 
 	async broadcastRoomState() {
