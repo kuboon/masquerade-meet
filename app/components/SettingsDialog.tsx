@@ -1,3 +1,4 @@
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import type { FC, ReactNode } from 'react'
 import { useRoomContext } from '~/hooks/useRoomContext'
 import { AudioInputSelector } from './AudioInputSelector'
@@ -30,6 +31,10 @@ export const SettingsButton = () => {
 				<Trigger asChild>
 					<Button className="text-sm" displayType="secondary">
 						<Icon type="cog" />
+						{/* The tooltip is not a name: it lives in a portal and only
+						    appears on hover, so without this the button is a
+						    picture to a screen reader. */}
+						<VisuallyHidden>設定</VisuallyHidden>
 					</Button>
 				</Trigger>
 			</Tooltip>

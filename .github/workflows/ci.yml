@@ -48,7 +48,7 @@ jobs:
       - run: >
           npx playwright test
           voice-changer dev-voice entry still-image host-succession rejoining
-          seating
+          seating settings
         env:
           # serve the built worker instead of the Remix watch-mode dev server
           PLAYWRIGHT_WEB_SERVER_COMMAND: npm start
