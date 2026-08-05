@@ -42,6 +42,38 @@ test('carries the chosen character set into the room', async ({ page }) => {
 	await expect(page).toHaveURL(/\/[A-Za-z0-9_-]{8}\?set=circus$/)
 })
 
+test('hands out a link with nothing but the room in it', async ({
+	browser,
+}) => {
+	const context = await browser.newContext({
+		// The microphone has to be in the list: naming any permission at all
+		// overrides Chromium's auto-accept, and without it the lobby stops at
+		// "マイクの権限が必要です" instead of asking.
+		permissions: ['microphone', 'clipboard-read', 'clipboard-write'],
+	})
+	const page = await context.newPage()
+
+	await page.goto('/')
+	await page.getByText('サーカス団', { exact: true }).click()
+	await page.getByRole('button', { name: 'ルームを作る' }).click()
+	const allow = page.getByRole('button', { name: '権限を許可する' })
+	await allow.waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {})
+	if (await allow.isVisible().catch(() => false)) await allow.click()
+	await expect(page.getByText('人が待機中')).toBeVisible({ timeout: 20_000 })
+
+	// The set reached the room, which is now the only place it lives.
+	await expect(
+		page.locator('img[src^="/characters/circus/"]').first()
+	).toBeVisible()
+	// So the knob comes off the address bar rather than sitting there doing
+	// nothing — the room ignores it from here on.
+	await expect(page).toHaveURL(/\/[A-Za-z0-9_-]{8}$/)
+
+	await page.getByRole('button', { name: 'URLをコピー' }).click()
+	const invitation = await page.evaluate(() => navigator.clipboard.readText())
+	expect(invitation).toMatch(/\/[A-Za-z0-9_-]{8}$/)
+})
+
 test('lets someone in who has no camera', async ({ page }) => {
 	// Refuse anything asking for video, the way a machine with no camera —
 	// or somebody who declines it — behaves. The microphone still works.

@@ -249,7 +249,14 @@ export default function Lobby() {
 					<MicButton />
 					<SettingsButton />
 					<Tooltip content="URLをコピー">
-						<CopyButton contentValue={roomUrl}></CopyButton>
+						{/* The tooltip is not a name — it lives in a portal and only
+						    appears on hover — so the button says so itself. */}
+						<CopyButton
+							contentValue={roomUrl}
+							copiedMessage={<VisuallyHidden>コピーしました</VisuallyHidden>}
+						>
+							<VisuallyHidden>URLをコピー</VisuallyHidden>
+						</CopyButton>
 					</Tooltip>
 				</div>
 

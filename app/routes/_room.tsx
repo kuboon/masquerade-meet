@@ -105,15 +105,26 @@ function RoomPreparation(props: {
 }) {
 	const { roomName } = useParams()
 	invariant(roomName)
-	const [searchParams] = useSearchParams()
+	const [searchParams, setSearchParams] = useSearchParams()
 	const userMedia = useUserMedia(props)
-	const room = useRoom({
-		roomName,
-		userMedia,
-		// Whoever follows the invite link first opens the room, so the set
-		// travels in the URL. Everyone after them is told what it is.
-		characterSetId: searchParams.get('set') ?? undefined,
-	})
+	// Read once, on the way in. Whoever opens the room first brings the set
+	// with them in the URL; from then on the room's own answer is the truth,
+	// and the address bar is free to lose it without the socket noticing.
+	const [requestedSet] = useState(() => searchParams.get('set') ?? undefined)
+	const room = useRoom({ roomName, userMedia, characterSetId: requestedSet })
+
+	// The room has answered, so it has settled what it wears and `?set=` can
+	// no longer change anything. Take it off the address bar rather than leave
+	// a knob that does nothing — and leave it there until the room has
+	// answered, in case this connection never lands and the next one has to
+	// ask again.
+	const answered = room.roomState.meetingId !== undefined
+	useEffect(() => {
+		if (!answered || !searchParams.has('set')) return
+		const withoutSet = new URLSearchParams(searchParams)
+		withoutSet.delete('set')
+		setSearchParams(withoutSet, { replace: true, preventScrollReset: true })
+	}, [answered, searchParams, setSearchParams])
 
 	return room.roomState.meetingId ? (
 		<Room room={room} userMedia={userMedia} />
