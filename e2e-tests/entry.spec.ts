@@ -16,7 +16,10 @@ test('goes straight into the room without asking for a name first', async ({
 }) => {
 	await page.goto('/')
 	await page.getByRole('button', { name: 'ルームを作る' }).click()
-	await expect(page).toHaveURL(/\/[A-Za-z0-9_-]{8}$/)
+	// A room name of its own, and the chosen roster travelling with it. Once
+	// there is more than one set to choose from the form carries `?set=`, so
+	// the name is the whole path rather than the whole URL.
+	await expect(page).toHaveURL(/\/[A-Za-z0-9_-]{8}(\?|$)/)
 
 	// The name and picture are asked for in the lobby, below the character
 	// picker, so nothing stands between the link and the room but the
@@ -25,6 +28,18 @@ test('goes straight into the room without asking for a name first', async ({
 	await expect(
 		page.getByRole('button', { name: '権限を許可する' })
 	).toBeVisible()
+})
+
+test('carries the chosen character set into the room', async ({ page }) => {
+	// The set travels in the URL because the room pins whatever the first
+	// connection asks for, and the link is what everyone else follows.
+	await page.goto('/')
+	// The card is the target; the radio inside it is only there so the form
+	// works before the JavaScript arrives.
+	await page.getByText('サーカス団', { exact: true }).click()
+	await expect(page.getByRole('radio', { name: 'サーカス団' })).toBeChecked()
+	await page.getByRole('button', { name: 'ルームを作る' }).click()
+	await expect(page).toHaveURL(/\/[A-Za-z0-9_-]{8}\?set=circus$/)
 })
 
 test('lets someone in who has no camera', async ({ page }) => {

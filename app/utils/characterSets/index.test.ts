@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { minimumParticipants } from '~/utils/masquerade'
 import {
 	characterSets,
 	defaultCharacterSetId,
@@ -46,6 +47,9 @@ describe('the character set registry', () => {
 		expect(getCharacter(getCharacterSet('animals'), 'bear')?.name).toBe(
 			'くまごろう'
 		)
+		// And dropping one of the original fifteen strands whoever is wearing
+		// it. Growing a set is safe; shrinking one is not.
+		expect(getCharacterSet('animals').characters).toHaveLength(15)
 	})
 
 	it('looks characters up inside their own set', () => {
@@ -59,8 +63,12 @@ describe('the character set registry', () => {
 // id and the character id separately, so two sets may both have a 'bear'.
 for (const set of characterSets) {
 	describe(`the ${set.id} set`, () => {
-		it('offers exactly 15 characters', () => {
-			expect(set.characters).toHaveLength(15)
+		it('has enough characters to hold a meeting', () => {
+			// A set's size is the room's capacity — canStartMeeting refuses to
+			// start with more people than there are faces to go round, and the
+			// lobby quotes the number back. Sets are allowed to be different
+			// sizes; what they are not allowed to be is too small to play.
+			expect(set.characters.length).toBeGreaterThanOrEqual(minimumParticipants)
 		})
 
 		it('gives every character a unique id and name', () => {

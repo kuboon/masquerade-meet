@@ -14,8 +14,9 @@
 
 import type { Character, CharacterSet } from '~/utils/characters'
 import animals from './animals'
+import circus from './circus'
 
-export const characterSets: CharacterSet[] = [animals]
+export const characterSets: CharacterSet[] = [animals, circus]
 
 /**
  * What a room gets when it does not say otherwise: rooms created before
