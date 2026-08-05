@@ -25,6 +25,24 @@ export const VideoInputSelector: FC<{ id?: string }> = ({ id }) => {
 		)
 	}
 
+	// Nothing to choose between. The camera is optional here and a browser
+	// will not name — or even admit to — a camera it has never been allowed to
+	// use, so this is the ordinary state for most people rather than a fault.
+	if (videoInputDevices.length === 0) {
+		return (
+			<div className="max-w-[40ch]">
+				<Select
+					tooltipContent="カメラの使用を許可すると選べるようになります"
+					id={id}
+					disabled
+					defaultValue="none"
+				>
+					<Option value="none">（カメラなし）</Option>
+				</Select>
+			</div>
+		)
+	}
+
 	return (
 		<div className="max-w-[40ch]">
 			<Select value={videoDeviceId} onValueChange={setVideoDeviceId} id={id}>
