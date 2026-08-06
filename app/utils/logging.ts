@@ -55,6 +55,11 @@ export type LogEvent =
 			revealAt: number
 	  }
 	| {
+			eventName: 'meetingStarting'
+			meetingId?: string
+			startAt: number
+	  }
+	| {
 			eventName: 'meetingRestarted'
 			meetingId?: string
 	  }

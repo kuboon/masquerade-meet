@@ -30,18 +30,29 @@ test('records a loop and disguises it', async ({ page }) => {
 	await page.getByRole('button', { name: 'ループ再生' }).click()
 	await expect(page.getByRole('button', { name: '再生を止める' })).toBeVisible()
 
-	// Moving a control edits the selected character's draft and shows up in
-	// the paste-ready snippet.
-	await page.getByLabel('ピッチ比 (数値)').fill('1.23')
-	await expect(page.getByLabel('書き出し')).toHaveValue(/pitchRatio: 1\.23,/)
+	// The whole voice is four controls, and no more.
+	await expect(page.getByRole('slider')).toHaveCount(4)
+
+	// Moving one edits the selected character's draft and shows up in the
+	// paste-ready snippet, written the way the character files are.
+	await page.getByLabel('体の大きさ (数値)').fill('-0.42')
+	await expect(page.getByLabel('書き出し')).toHaveValue(
+		/^voice: voice\(-0\.42, /
+	)
 	await expect(page.getByText('1体を編集中')).toBeVisible()
+
+	// A clean voice leaves the optional fourth argument off; a rasping one
+	// has to write it.
+	await expect(page.getByLabel('書き出し')).toHaveValue(/, [-\d.]+\),$/)
+	await page.getByLabel('かすれ (数値)').fill('0.4')
+	await expect(page.getByLabel('書き出し')).toHaveValue(/, 0\.4\),$/)
 
 	// The whole-set view covers every character, edited or not.
 	await page.getByLabel('セット全体').click()
 	const wholeSet = await page.getByLabel('書き出し').inputValue()
 	expect(wholeSet).toContain('// bear — くまごろう')
 	expect(wholeSet).toContain('// lion — ')
-	expect(wholeSet.match(/voice: \{/g)).toHaveLength(15)
+	expect(wholeSet.match(/voice: voice\(/g)).toHaveLength(15)
 	await page.getByLabel('セット全体').click()
 
 	await page.getByRole('button', { name: 'このキャラをリセット' }).click()

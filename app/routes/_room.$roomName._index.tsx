@@ -14,6 +14,7 @@ import { Disclaimer } from '~/components/Disclaimer'
 import { Icon } from '~/components/Icon/Icon'
 import { MicButton } from '~/components/MicButton'
 import { UnmaskedIdentity } from '~/components/UnmaskedIdentity'
+import { VoicePreview } from '~/components/VoicePreview'
 
 import { SettingsButton } from '~/components/SettingsDialog'
 import { Spinner } from '~/components/Spinner'
@@ -21,7 +22,7 @@ import { Tooltip } from '~/components/Tooltip'
 import { useRoomContext } from '~/hooks/useRoomContext'
 import { useRoomUrl } from '~/hooks/useRoomUrl'
 import getUsername from '~/utils/getUsername.server'
-import { minimumParticipants } from '~/utils/masquerade'
+import { minimumParticipants, startCountdownMs } from '~/utils/masquerade'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	// May be null: the layout above shows the name form in that case and this
@@ -52,12 +53,10 @@ function trackRefreshes() {
 export default function Lobby() {
 	const { roomName } = useParams()
 	const navigate = useNavigate()
-	const { setJoined, userMedia, room, partyTracks, masquerade } =
-		useRoomContext()
+	const { setJoined, userMedia, partyTracks, masquerade } = useRoomContext()
 	const { audioStreamTrack, audioEnabled } = userMedia
 	const session = useObservableAsValue(partyTracks.session$)
 	const sessionError = useObservableAsValue(partyTracks.sessionError$)
-	const { identity } = room
 	trackRefreshes()
 
 	const roomUrl = useRoomUrl()
@@ -67,18 +66,19 @@ export default function Lobby() {
 		character,
 		characterSet,
 		participants,
-		everyoneReady,
 		canStart,
-		readyCount,
 		isHost,
 		meetingStarted,
+		starting,
+		startingIn,
 		selectCharacter,
 		setDisplayName,
-		setReady,
 		startMeeting,
+		wornVoice,
+		voiceCustomised,
+		setMyVoice,
+		clearMyVoice,
 	} = masquerade
-
-	const ready = identity?.ready ?? false
 
 	// Remembered so a regular does not retype it every time. The room never
 	// broadcasts it back — it is stripped from the public user list until the
@@ -96,36 +96,47 @@ export default function Lobby() {
 		return () => clearTimeout(timeout)
 	}, [displayName, setDisplayName])
 
-	// Everyone waits here until the host starts the meeting, then walks in
-	// together — that simultaneous arrival is what makes the disguises work.
+	// Everyone waits here until the meeting begins, then walks in together —
+	// that simultaneous arrival is what makes the disguises work. A name is
+	// the whole of the entry requirement: a character and a voice can be
+	// settled for somebody who has not got round to them, but the name they
+	// will be unmasked as cannot. Somebody who types one late walks in then.
+	const named = displayName.trim() !== ''
 	useEffect(() => {
-		if (!meetingStarted || !ready) return
+		if (!meetingStarted || !named) return
 		setJoined(true)
 		navigate('room' + (params.size > 0 ? '?' + params.toString() : ''))
-	}, [meetingStarted, ready, setJoined, navigate, params])
+	}, [meetingStarted, named, setJoined, navigate, params])
 
-	const waitingOn = participants.filter((u) => !u.ready).length
 	const missingParticipants = minimumParticipants - participants.length
-	// Being short of people and being short of ready people are different
-	// problems, and telling the host "0人の準備待ち" when they are simply alone
-	// would send them looking for a bug that isn't there.
 	const overCapacity = participants.length - characterSet.characters.length
 	const startHint =
 		overCapacity > 0
 			? `キャラクターが足りません。1ルームの定員は${characterSet.characters.length}人です（${overCapacity}人超過）`
 			: missingParticipants > 0
 				? `ミーティング開始にはあと${missingParticipants}人の参加が必要です`
-				: everyoneReady
-					? '全員そろいました'
-					: `あと${waitingOn}人の準備を待っています`
+				: `押すと${startCountdownMs / 1000}秒後に始まります`
 
 	return (
 		<div className="mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
 			<div className="w-full space-y-4">
+				{starting && (
+					<div className="rounded-md bg-orange-100 p-3 text-sm text-zinc-900 dark:bg-orange-900 dark:text-zinc-100">
+						<p className="font-bold">
+							まもなく始まります
+							{startingIn !== undefined && `（${startingIn}秒）`}
+						</p>
+						<p className="pt-1">
+							まだ選んでいないキャラクターは自動で決まります。
+							{!named && '名前を入れないと参加できません。'}
+						</p>
+					</div>
+				)}
+
 				<div>
 					<h1 className="text-3xl font-bold">{roomName}</h1>
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">
-						{participants.length}人が待機中 ／ 準備完了 {readyCount}人
+						{participants.length}人が待機中
 					</p>
 				</div>
 
@@ -174,7 +185,7 @@ export default function Lobby() {
 					<CharacterPicker
 						characters={characterSet.characters}
 						selectedId={character?.id}
-						disabled={ready}
+						disabled={starting}
 						onSelect={selectCharacter}
 					/>
 					<p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -186,11 +197,17 @@ export default function Lobby() {
 					</p>
 				</div>
 
-				<UnmaskedIdentity
-					name={displayName}
-					onNameChange={setStoredName}
-					disabled={ready}
-				/>
+				<div className="space-y-2">
+					<h2 className="text-sm font-semibold">声を確かめる（任意）</h2>
+					<VoicePreview
+						voice={wornVoice}
+						onVoiceChange={setMyVoice}
+						onReset={clearMyVoice}
+						customised={voiceCustomised}
+					/>
+				</div>
+
+				<UnmaskedIdentity name={displayName} onNameChange={setStoredName} />
 
 				{meetingStarted && !character && (
 					// The room hands out a character on arrival and only comes up
@@ -228,19 +245,13 @@ export default function Lobby() {
 				)}
 
 				<div className="flex flex-wrap items-center gap-4 text-sm">
-					<Button
-						onClick={() => setReady(!ready)}
-						disabled={
-							!session?.sessionId || !character || displayName.trim() === ''
-						}
-						displayType={ready ? 'secondary' : 'primary'}
-					>
-						{ready ? '準備完了を取り消す' : '準備完了'}
-					</Button>
 					{isHost && !meetingStarted && (
 						<Tooltip content={startHint}>
 							<span>
-								<Button onClick={startMeeting} disabled={!canStart}>
+								<Button
+									onClick={startMeeting}
+									disabled={!canStart || starting || !session?.sessionId}
+								>
 									ミーティング開始
 								</Button>
 							</span>
@@ -260,13 +271,13 @@ export default function Lobby() {
 					</Tooltip>
 				</div>
 
-				{ready && !meetingStarted && (
+				{!meetingStarted && !starting && (
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">
 						{!isHost
 							? 'ルーム管理者がミーティングを開始するのを待っています…'
 							: missingParticipants > 0
 								? `ミーティング開始には${minimumParticipants}人以上必要です。URLを共有して招待してください。`
-								: '全員の準備が終わったら「ミーティング開始」を押してください。'}
+								: `「ミーティング開始」を押すと${startCountdownMs / 1000}秒後に始まります。まだ選び終わっていない人の分は自動で決まります。`}
 					</p>
 				)}
 
@@ -276,15 +287,6 @@ export default function Lobby() {
 							key={user.id}
 							className="flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm dark:bg-zinc-800"
 						>
-							<span
-								className={
-									user.ready
-										? 'text-green-600 dark:text-green-400'
-										: 'opacity-40'
-								}
-							>
-								●
-							</span>
 							{user.name}
 							{user.id === masquerade.hostId && (
 								<span className="text-xs text-zinc-500 dark:text-zinc-400">

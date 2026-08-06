@@ -6,7 +6,6 @@ const user = (id: string, joined = true) =>
 	({
 		id,
 		name: id,
-		ready: true,
 		joined,
 		raisedHand: false,
 		speaking: false,

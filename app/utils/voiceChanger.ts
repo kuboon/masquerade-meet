@@ -1,5 +1,5 @@
 import { BehaviorSubject, Observable, type Subscription } from 'rxjs'
-import { neutralVoice, type VoiceParams } from './characters'
+import { neutralVoice, VOICE_RANGE, type VoiceParams } from './characters'
 
 /**
  * The voice disguise currently applied to the local mic.
@@ -21,6 +21,50 @@ export const VOICE_WORKLET_URL = '/voice/voice-changer-worklet.js'
 // Short enough to feel instant, long enough to avoid a click.
 const RAMP_SECONDS = 0.03
 
+/** The engine's own controls, worked out from the four a person sees. */
+export interface EngineParams {
+	pitchRatio: number
+	ringModHz: number
+	ringModDepth: number
+	lowGain: number
+	midGain: number
+	highGain: number
+}
+
+/**
+ * The four axes a person tunes, turned into the ten the engine takes.
+ *
+ * The whole point of the split: everything arbitrary lives here, in one
+ * function with a test, rather than being spread across thirty character
+ * files where nobody can see whether two of them mean the same thing.
+ */
+export function toEngineParams(params: VoiceParams): EngineParams {
+	const rough = Math.max(0, Math.min(1, params.roughness))
+	return {
+		// Semitones, because pitch is geometric — the same slider distance has
+		// to be the same musical distance at both ends of the range.
+		pitchRatio: 2 ** ((params.size * VOICE_RANGE.sizeSemitones) / 12),
+		// Low enough to be heard as a rasp in the voice rather than as a tone
+		// beside it, and rising a little so the top of the slider buzzes.
+		ringModHz: rough > 0 ? 28 + rough * 45 : 0,
+		ringModDepth: rough * VOICE_RANGE.roughnessDepth,
+		// The two shelves move opposite ways, which is what makes this tilt
+		// rather than volume.
+		lowGain: -params.weight * VOICE_RANGE.weightDb,
+		highGain: params.weight * VOICE_RANGE.weightDb,
+		midGain: params.nasal * VOICE_RANGE.nasalDb,
+	}
+}
+
+/**
+ * Where the nasal peak sits, and how tight it is.
+ *
+ * Fixed rather than offered: sweeping the frequency is another axis nobody
+ * asked for, and 1.8 kHz is where a nose doing too much of the work shows up.
+ */
+export const NASAL_FREQUENCY = 1800
+const NASAL_Q = 1.4
+
 export interface ToneNodes {
 	low: BiquadFilterNode
 	mid: BiquadFilterNode
@@ -40,8 +84,8 @@ export function createToneNodes(context: BaseAudioContext): ToneNodes {
 
 	const mid = context.createBiquadFilter()
 	mid.type = 'peaking'
-	mid.frequency.value = neutralVoice.tone.midFreq
-	mid.Q.value = neutralVoice.tone.midQ
+	mid.frequency.value = NASAL_FREQUENCY
+	mid.Q.value = NASAL_Q
 	mid.gain.value = 0
 
 	const high = context.createBiquadFilter()
@@ -74,18 +118,18 @@ export function applyVoiceParams(
 ) {
 	const now = context.currentTime
 	const get = (name: string) => node.parameters.get(name)
+	const engine = toEngineParams(params)
 
-	ramp(get('pitchRatio')!, params.pitchRatio, now)
-	ramp(get('vibratoRate')!, params.vibratoRate, now)
-	ramp(get('vibratoDepth')!, params.vibratoDepth, now)
-	ramp(get('ringModHz')!, params.ringModHz, now)
-	ramp(get('ringModDepth')!, params.ringModDepth, now)
+	ramp(get('pitchRatio')!, engine.pitchRatio, now)
+	ramp(get('ringModHz')!, engine.ringModHz, now)
+	ramp(get('ringModDepth')!, engine.ringModDepth, now)
+	// The worklet's vibrato is left where it defaults, at zero. It is a
+	// singing quality rather than a speaking one, and it earned none of the
+	// four places on offer.
 
-	ramp(toneNodes.low.gain, params.tone.low, now)
-	ramp(toneNodes.mid.frequency, params.tone.midFreq, now)
-	ramp(toneNodes.mid.gain, params.tone.midGain, now)
-	ramp(toneNodes.mid.Q, params.tone.midQ, now)
-	ramp(toneNodes.high.gain, params.tone.high, now)
+	ramp(toneNodes.low.gain, engine.lowGain, now)
+	ramp(toneNodes.mid.gain, engine.midGain, now)
+	ramp(toneNodes.high.gain, engine.highGain, now)
 }
 
 /**
