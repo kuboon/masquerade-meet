@@ -10,6 +10,7 @@ export default {
 	id: 'animals',
 	name: 'どうぶつさん',
 	tagline: 'くまからライオンまで、なじみのある 15 匹',
+	banner: '/characters/animals/banner.webp',
 	characters: [
 		{
 			id: 'bear',

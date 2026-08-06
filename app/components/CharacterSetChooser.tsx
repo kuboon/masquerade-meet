@@ -8,18 +8,16 @@ import { characterSets, defaultCharacterSetId } from '~/utils/characterSets'
  * `?set=` to /new on its own, and the checked state comes from
  * `peer-checked:` instead of from React.
  *
- * Only a few characters are shown per set: fifteen thumbnails each would
- * turn the landing page into a sprite sheet.
+ * One banner per row rather than a grid of two: the set's name is drawn into
+ * the artwork, and at half the width it is too small to read.
  */
-const PREVIEW_COUNT = 4
-
 export function CharacterSetChooser() {
 	return (
 		<fieldset className="space-y-2">
 			<legend className="pb-2 text-sm font-semibold">キャラクター</legend>
-			<div className="grid gap-2 sm:grid-cols-2">
+			<div className="space-y-2">
 				{characterSets.map((set) => (
-					<label key={set.id} className="cursor-pointer">
+					<label key={set.id} className="block cursor-pointer">
 						<input
 							type="radio"
 							name="set"
@@ -27,19 +25,20 @@ export function CharacterSetChooser() {
 							defaultChecked={set.id === defaultCharacterSetId}
 							className="peer sr-only"
 						/>
-						<div className="rounded-lg border-2 border-zinc-200 p-3 transition peer-checked:border-orange-500 peer-focus-visible:ring-2 peer-focus-visible:ring-orange-400 dark:border-zinc-700 dark:peer-checked:border-orange-500">
-							<div className="flex gap-1">
-								{set.characters.slice(0, PREVIEW_COUNT).map((character) => (
-									<img
-										key={character.id}
-										src={character.image}
-										alt=""
-										className="h-10 w-10 rounded object-contain"
-									/>
-								))}
-							</div>
-							<p className="pt-2 text-sm font-medium">{set.name}</p>
-							<p className="text-xs text-zinc-500 dark:text-zinc-400">
+						{/* The image is dimmed from out here rather than by a
+						    `peer-checked:` of its own: the peer variant reaches the
+						    input's siblings, and the image is a level below one. */}
+						<div className="overflow-hidden rounded-lg border-2 border-zinc-200 transition peer-checked:border-orange-500 peer-checked:[&_img]:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-orange-400 dark:border-zinc-700 dark:peer-checked:border-orange-500">
+							<img
+								src={set.banner}
+								// The banner says the name; this is for everyone who
+								// cannot see it, and it is what names the radio.
+								alt={set.name}
+								width={1536}
+								height={428}
+								className="w-full opacity-60 transition"
+							/>
+							<p className="p-3 text-xs text-zinc-500 dark:text-zinc-400">
 								{set.tagline}
 							</p>
 						</div>

@@ -77,6 +77,13 @@ export interface CharacterSet {
 	name: string
 	/** one line of flavour for the set chooser */
 	tagline: string
+	/**
+	 * Wide artwork for the set chooser, e.g. '/characters/animals/banner.webp'.
+	 *
+	 * The set's name is drawn into the picture, so whatever shows it does not
+	 * need to caption it — but `name` is still what a screen reader is given.
+	 */
+	banner: string
 	characters: Character[]
 }
 

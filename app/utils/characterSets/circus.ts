@@ -17,6 +17,7 @@ export default {
 	id: 'circus',
 	name: 'サーカス団',
 	tagline: '天幕の下に集まった、はぐれ者の一座',
+	banner: '/characters/circus/banner.webp',
 	characters: [
 		{
 			id: 'lion',
