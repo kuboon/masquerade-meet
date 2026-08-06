@@ -65,7 +65,7 @@ export interface Character {
 	emoji: string
 	/** one line of flavour text shown in the picker */
 	tagline: string
-	/** public path of the artwork, e.g. '/characters/animals/bear.svg' */
+	/** public path of the artwork, e.g. '/characters/animals/bear.png' */
 	image: string
 	voice: VoiceParams
 }
