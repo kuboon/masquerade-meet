@@ -13,8 +13,8 @@ import type { UserMedia } from './useUserMedia'
 /**
  * A connection id that survives a page reload.
  *
- * The Durable Object keys a participant's character, ready state and host
- * role by connection id, so without this a refresh mid-meeting would hand the
+ * The Durable Object keys a participant's character, seat and host role by
+ * connection id, so without this a refresh mid-meeting would hand the
  * user a brand new character — and everyone else would watch a stranger walk
  * in. sessionStorage keeps it per tab, so opening a second tab still gets a
  * separate seat at the table.

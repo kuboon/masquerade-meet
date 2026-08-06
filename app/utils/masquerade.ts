@@ -10,21 +10,38 @@ import type { RoomPhase } from '~/types/Messages'
 export const minimumParticipants = 2
 
 /**
- * The one place that decides whether the lobby may hand over to the meeting.
+ * How long everyone has once the host says go.
+ *
+ * Long enough to finish choosing a character, short enough that nobody is
+ * waited on. A character and a voice can both be settled for somebody who
+ * runs out of time; a name cannot, which is why the name is the one thing
+ * asked for up front.
+ *
+ * Shared rather than living in the Durable Object, because the lobby quotes
+ * the number back and the two must not drift.
+ */
+export const startCountdownMs = 10_000
+
+/**
+ * The one place that decides whether the host may set the meeting going.
+ *
+ * It no longer waits for anybody. A masquerade the host attends alone is a
+ * person in a mask in an empty room, and one with more people than faces
+ * cannot be dealt — but beyond that, whoever is still choosing has until the
+ * deadline, and whatever they have not settled is settled for them.
  *
  * The Durable Object enforces this and the lobby UI reads it to decide
  * whether the start button is live, so the button never promises something
  * the room will then refuse.
  */
 export function canStartMeeting(
-	participants: { ready: boolean }[],
+	participants: unknown[],
 	/** how many characters the room's set has to hand out */
 	capacity: number
 ): boolean {
 	return (
 		participants.length >= minimumParticipants &&
-		participants.length <= capacity &&
-		participants.every((u) => u.ready)
+		participants.length <= capacity
 	)
 }
 
@@ -78,20 +95,9 @@ export function nextHost<T extends { joinedAt?: number }>(
  * just seen who was wearing what.
  */
 export function restartParticipant<
-	T extends {
-		ready: boolean
-		joined: boolean
-		raisedHand: boolean
-		speaking: boolean
-	},
+	T extends { joined: boolean; raisedHand: boolean; speaking: boolean },
 >(user: T): T {
-	return {
-		...user,
-		ready: false,
-		joined: false,
-		raisedHand: false,
-		speaking: false,
-	}
+	return { ...user, joined: false, raisedHand: false, speaking: false }
 }
 
 /**

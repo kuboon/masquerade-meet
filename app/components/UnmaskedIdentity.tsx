@@ -43,7 +43,7 @@ export function UnmaskedIdentity({
 			</div>
 			<StillImagePicker />
 			<p className="text-xs text-zinc-500 dark:text-zinc-400">
-				どちらも変装が解けるまで誰にも見えません。名前を入れるまで準備完了にはできません。
+				どちらも変装が解けるまで誰にも見えません。名前を入れないとミーティングに参加できません。
 			</p>
 		</div>
 	)

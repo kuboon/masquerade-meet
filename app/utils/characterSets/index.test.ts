@@ -1,7 +1,9 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { isDisguised, VOICE_RANGE } from '~/utils/characters'
 import { minimumParticipants } from '~/utils/masquerade'
+import { toEngineParams } from '~/utils/voiceChanger'
 import {
 	characterSets,
 	defaultCharacterSetId,
@@ -97,26 +99,44 @@ for (const set of characterSets) {
 			}
 		})
 
-		it('keeps pitch ratios inside the worklet parameter range', () => {
+		it('keeps every axis inside the range a slider offers', () => {
+			// A character outside it cannot be reproduced by anybody tuning
+			// their own voice, and the preview would stop matching the meeting.
 			for (const { id, voice } of set.characters) {
-				expect(voice.pitchRatio, id).toBeGreaterThanOrEqual(0.25)
-				expect(voice.pitchRatio, id).toBeLessThanOrEqual(4)
+				expect(Math.abs(voice.size), `${id} size`).toBeLessThanOrEqual(1)
+				expect(Math.abs(voice.weight), `${id} weight`).toBeLessThanOrEqual(1)
+				expect(Math.abs(voice.nasal), `${id} nasal`).toBeLessThanOrEqual(1)
+				expect(voice.roughness, `${id} roughness`).toBeGreaterThanOrEqual(0)
+				expect(voice.roughness, `${id} roughness`).toBeLessThanOrEqual(1)
 			}
 		})
 
-		it('never uses a pitch ratio of exactly 1', () => {
-			// A static grain phase turns the shifter's two taps into a fixed comb
-			// filter, which colours the voice without disguising it.
+		it('keeps every pitch inside what the worklet will take', () => {
 			for (const { id, voice } of set.characters) {
-				expect(voice.pitchRatio, id).not.toBe(1)
+				const { pitchRatio } = toEngineParams(voice)
+				expect(pitchRatio, id).toBeGreaterThanOrEqual(0.25)
+				expect(pitchRatio, id).toBeLessThanOrEqual(4)
 			}
 		})
 
 		it('makes every voice audibly different from the real one', () => {
 			for (const { id, voice } of set.characters) {
-				const shifted = Math.abs(voice.pitchRatio - 1) > 0.05
-				const modulated = voice.ringModHz > 0 && voice.ringModDepth > 0
-				expect(shifted || modulated, `${id} is not disguised`).toBe(true)
+				expect(isDisguised(voice), `${id} is not disguised`).toBe(true)
+			}
+		})
+
+		it('gives no two characters the same body', () => {
+			// Size is the cue people actually go by; two characters within a
+			// semitone of each other are one character as far as the ear is
+			// concerned, however different the rest of their settings look.
+			const sizes = set.characters
+				.map((c) => c.voice.size)
+				.sort((a, b) => a - b)
+			for (let i = 1; i < sizes.length; i++) {
+				expect(
+					sizes[i] - sizes[i - 1],
+					`${set.id} has two characters at size ${sizes[i]}`
+				).toBeGreaterThan(1 / VOICE_RANGE.sizeSemitones)
 			}
 		})
 	})

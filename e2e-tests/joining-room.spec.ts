@@ -11,14 +11,12 @@ test('two users meet in disguise and are then revealed', async ({
 		permissions: ['camera', 'microphone'],
 	})
 
-	// The name is asked for in the lobby now, under the character picker,
-	// and nobody can ready up without one.
+	// The name is asked for in the lobby, under the character picker, and it
+	// is the whole of the entry requirement: a character and a voice can be
+	// settled for somebody who runs out of time, but a name cannot.
 	const enterLobby = async (page: Page, name: string) => {
 		await page.goto(location)
 		await page.getByLabel('名前').fill(name)
-		const ready = page.getByRole('button', { name: '準備完了', exact: true })
-		await expect(ready).toBeEnabled({ timeout: 15_000 })
-		await ready.click()
 	}
 
 	// the first person into the room becomes its host
@@ -28,8 +26,12 @@ test('two users meet in disguise and are then revealed', async ({
 	const guest = await context.newPage()
 	await enterLobby(guest, 'sam')
 
-	// the meeting can only start once everybody is ready
-	await host.getByRole('button', { name: 'ミーティング開始' }).click()
+	// Nobody declares themselves ready — the host arms a deadline and the
+	// room begins on it, settling whatever is still unchosen.
+	const start = host.getByRole('button', { name: 'ミーティング開始' })
+	await expect(start).toBeEnabled({ timeout: 20_000 })
+	await start.click()
+	await expect(host.getByText('まもなく始まります')).toBeVisible()
 
 	await expect(host.getByRole('button', { name: 'Leave' })).toBeVisible()
 	await expect(guest.getByRole('button', { name: 'Leave' })).toBeVisible()
@@ -44,21 +46,18 @@ test('two users meet in disguise and are then revealed', async ({
 	// The host can start over at any point in a meeting, the reveal included.
 	// Here it happens while everyone is still masked — a round that is going
 	// wrong should not have to be played out first.
-	const readyUp = (page: Page) =>
-		page.getByRole('button', { name: '準備完了', exact: true })
 	await host.getByRole('button', { name: '最初から' }).click()
 	await host.getByRole('button', { name: 'キャラクター選択に戻る' }).click()
 
 	for (const page of [host, guest]) {
 		// Everybody walks back out to the lobby, not just the host — the half
-		// of this that a single page cannot show. And enabled, not merely
-		// present: the name from the first round is still on file, so nobody
-		// has to introduce themselves twice.
-		await expect(readyUp(page)).toBeEnabled({ timeout: 20_000 })
+		// of this that a single page cannot show. The name from the first
+		// round is still filled in, so nobody introduces themselves twice.
+		await expect(page.getByLabel('名前')).toHaveValue(/.+/, {
+			timeout: 20_000,
+		})
 	}
 
-	await readyUp(host).click()
-	await readyUp(guest).click()
 	await host.getByRole('button', { name: 'ミーティング開始' }).click()
 
 	// masks back on for the second round
@@ -98,5 +97,5 @@ test('two users meet in disguise and are then revealed', async ({
 	// and starting over still works from the other side of the reveal
 	await host.getByRole('button', { name: '最初から' }).click()
 	await host.getByRole('button', { name: 'キャラクター選択に戻る' }).click()
-	await expect(readyUp(guest)).toBeEnabled({ timeout: 20_000 })
+	await expect(guest.getByLabel('名前')).toBeVisible({ timeout: 20_000 })
 })

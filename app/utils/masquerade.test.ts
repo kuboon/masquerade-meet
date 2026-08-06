@@ -8,37 +8,36 @@ import {
 	restartParticipant,
 } from './masquerade'
 
-const ready = (count: number) =>
-	Array.from({ length: count }, () => ({ ready: true }))
-
 const CAPACITY = 15
 
 describe('canStartMeeting', () => {
+	const people = (count: number) => Array.from({ length: count }, () => ({}))
+
 	it('refuses an empty lobby', () => {
 		expect(canStartMeeting([], CAPACITY)).toBe(false)
 	})
 
-	it('refuses a host who is on their own, however ready they are', () => {
-		expect(canStartMeeting(ready(1), CAPACITY)).toBe(false)
+	it('refuses a host who is on their own', () => {
+		expect(canStartMeeting(people(1), CAPACITY)).toBe(false)
 	})
 
-	it('allows the meeting once the minimum is met and everyone is ready', () => {
-		expect(canStartMeeting(ready(minimumParticipants), CAPACITY)).toBe(true)
-		expect(canStartMeeting(ready(minimumParticipants + 3), CAPACITY)).toBe(true)
+	it('allows the meeting once the minimum is met', () => {
+		expect(canStartMeeting(people(minimumParticipants), CAPACITY)).toBe(true)
+		expect(canStartMeeting(people(minimumParticipants + 3), CAPACITY)).toBe(
+			true
+		)
 	})
 
-	it('still waits on anyone who has not readied up', () => {
-		expect(canStartMeeting([...ready(1), { ready: false }], CAPACITY)).toBe(
-			false
-		)
-		expect(canStartMeeting([...ready(4), { ready: false }], CAPACITY)).toBe(
-			false
-		)
+	it('waits for nobody', () => {
+		// The gate used to require everyone to have readied up, which let one
+		// person who had wandered off hold up the room. Whoever is still
+		// choosing has until the deadline instead.
+		expect(canStartMeeting(people(5), CAPACITY)).toBe(true)
 	})
 
 	it('refuses more people than there are characters to hide behind', () => {
-		expect(canStartMeeting(ready(CAPACITY), CAPACITY)).toBe(true)
-		expect(canStartMeeting(ready(CAPACITY + 1), CAPACITY)).toBe(false)
+		expect(canStartMeeting(people(CAPACITY), CAPACITY)).toBe(true)
+		expect(canStartMeeting(people(CAPACITY + 1), CAPACITY)).toBe(false)
 	})
 })
 
@@ -97,7 +96,6 @@ describe('restartParticipant', () => {
 		realName: '本名',
 		name: 'くまごろう',
 		characterId: 'bear',
-		ready: true,
 		joined: true,
 		raisedHand: true,
 		speaking: true,
@@ -105,7 +103,6 @@ describe('restartParticipant', () => {
 
 	it('puts everyone back to square one for the next round', () => {
 		expect(restartParticipant(veteran)).toMatchObject({
-			ready: false,
 			joined: false,
 			raisedHand: false,
 			speaking: false,
@@ -114,8 +111,9 @@ describe('restartParticipant', () => {
 
 	it('keeps who they are', () => {
 		// Losing the name would make the lobby demand one again from people who
-		// are already sitting in it, and refuse to let them ready up until they
-		// noticed. The character is the room's to deal, not this function's.
+		// are already sitting in it, and leave them behind at the next start if
+		// they did not notice. The character is the room's to deal, not this
+		// function's.
 		const restarted = restartParticipant(veteran)
 		expect(restarted.realName).toBe('本名')
 		expect(restarted.id).toBe('a')

@@ -18,7 +18,6 @@ export type User = {
 	 */
 	name: string
 	characterId?: string
-	ready: boolean
 	transceiverSessionId?: string
 	raisedHand: boolean
 	speaking: boolean
@@ -81,6 +80,15 @@ export type MasqueradeState = {
 	 * shuffling along. Optional only for rooms that predate it.
 	 */
 	seats?: string[]
+	/**
+	 * When the meeting begins, on the Durable Object's clock — set the moment
+	 * the host says go, cleared when it fires. Compare against `serverNow`
+	 * from the same message rather than against `Date.now()`.
+	 *
+	 * A deadline rather than a request for permission: whatever anybody has
+	 * not settled by then is settled for them.
+	 */
+	startAt?: number
 }
 
 export type RoomState = {
@@ -171,10 +179,6 @@ export type ClientMessage =
 	| {
 			type: 'selectCharacter'
 			characterId: string
-	  }
-	| {
-			type: 'setReady'
-			ready: boolean
 	  }
 	| {
 			type: 'startMeeting'

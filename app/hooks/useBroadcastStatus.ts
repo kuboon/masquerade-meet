@@ -44,14 +44,12 @@ export default function useBroadcastStatus({
 	// Identity fields are server-owned; they are echoed back only to satisfy the
 	// message shape. The Durable Object ignores them on userUpdate.
 	const characterId = identity?.characterId
-	const ready = identity?.ready ?? false
 	useEffect(() => {
 		if (id && name) {
 			const user: User = {
 				id,
 				name,
 				characterId,
-				ready,
 				joined: true,
 				raisedHand,
 				speaking,
@@ -100,7 +98,6 @@ export default function useBroadcastStatus({
 		audioUnavailableReason,
 		audioUnavailable,
 		characterId,
-		ready,
 	])
 
 	useUnmount(() => {
@@ -112,7 +109,6 @@ export default function useBroadcastStatus({
 						id,
 						name,
 						characterId,
-						ready,
 						joined: false,
 						raisedHand,
 						speaking,

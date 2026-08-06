@@ -5,6 +5,7 @@ import { neutralVoice } from '~/utils/characters'
 import { canRestartMeeting, canStartMeeting } from '~/utils/masquerade'
 import { stillImage$ } from '~/utils/stillImage'
 import { setVoiceParams } from '~/utils/voiceChanger'
+import useMyVoice from './useMyVoice'
 import type useRoom from './useRoom'
 import { allowStillImage, type UserMedia } from './useUserMedia'
 
@@ -24,7 +25,7 @@ export default function useMasquerade({
 	userMedia: UserMedia
 }) {
 	const { roomState, identity, send } = room
-	const { phase, hostId, revealAt, serverNow, characterSetId, seats } =
+	const { phase, hostId, revealAt, serverNow, characterSetId, seats, startAt } =
 		roomState.masquerade
 
 	const isHost = Boolean(identity && hostId === identity.id)
@@ -76,11 +77,42 @@ export default function useMasquerade({
 		return () => clearInterval(interval)
 	}, [phase, localRevealAt, revealed])
 
+	// The meeting's own deadline, read the same way as the reveal's: only the
+	// interval matters, so a client whose clock is wrong still counts down
+	// with everybody else.
+	const [localStartAt, setLocalStartAt] = useState<number>()
+	useEffect(() => {
+		if (startAt === undefined) {
+			setLocalStartAt(undefined)
+			return
+		}
+		setLocalStartAt(Date.now() + (startAt - serverNow))
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [startAt])
+
+	const [startingIn, setStartingIn] = useState<number>()
+	useEffect(() => {
+		if (localStartAt === undefined) {
+			setStartingIn(undefined)
+			return
+		}
+		const tick = () =>
+			setStartingIn(Math.max(0, Math.ceil((localStartAt - Date.now()) / 1000)))
+		tick()
+		const interval = setInterval(tick, 100)
+		return () => clearInterval(interval)
+	}, [localStartAt])
+
 	// The disguise itself. Retargets the live audio graph, so switching
 	// characters or dropping the mask is seamless.
+	// Whatever they tuned wins over whatever they were dealt: somebody who
+	// spent the lobby getting their voice right does not want it taken away by
+	// a draw they had no say in.
+	const [myVoice, setMyVoice, clearMyVoice] = useMyVoice()
+	const wornVoice = myVoice ?? character?.voice ?? neutralVoice
 	useEffect(() => {
-		setVoiceParams(revealed || !character ? neutralVoice : character.voice)
-	}, [revealed, character])
+		setVoiceParams(revealed || !character ? neutralVoice : wornVoice)
+	}, [revealed, character, wornVoice])
 
 	// A camera that is never sent cannot give anyone away. It comes back on
 	// automatically at the reveal, which is the whole payoff — unless a
@@ -99,14 +131,15 @@ export default function useMasquerade({
 
 	const participants = roomState.users
 
-	const everyoneReady =
-		participants.length > 0 && participants.every((u) => u.ready)
-
 	return {
 		phase: phase as RoomPhase,
 		/** true once this client has actually dropped its disguise */
 		revealed,
 		countdown,
+		/** seconds until the meeting begins, once the host has said go */
+		startingIn,
+		/** the host has set it going and nobody can stop it now */
+		starting: startAt !== undefined,
 		isHost,
 		hostId,
 		character,
@@ -127,12 +160,10 @@ export default function useMasquerade({
 			[characterSet]
 		),
 		participants,
-		everyoneReady,
 		/** the same rule the room enforces, so the button cannot over-promise */
 		canStart: canStartMeeting(participants, characterSet.characters.length),
 		/** the host may run the whole thing again with the same people */
 		canRestart: canRestartMeeting(phase),
-		readyCount: participants.filter((u) => u.ready).length,
 		/** the meeting is under way — the lobby should hand over to the room */
 		meetingStarted: phase !== 'lobby',
 		selectCharacter: useCallback(
@@ -143,13 +174,15 @@ export default function useMasquerade({
 			(name: string) => send({ type: 'setDisplayName', name }),
 			[send]
 		),
-		setReady: useCallback(
-			(ready: boolean) => send({ type: 'setReady', ready }),
-			[send]
-		),
 		startMeeting: useCallback(() => send({ type: 'startMeeting' }), [send]),
 		startReveal: useCallback(() => send({ type: 'startReveal' }), [send]),
 		restartMeeting: useCallback(() => send({ type: 'restartMeeting' }), [send]),
+		/** the voice going out: theirs if they tuned one, else the character's */
+		wornVoice,
+		/** true once they have tuned one of their own */
+		voiceCustomised: myVoice !== undefined,
+		setMyVoice,
+		clearMyVoice,
 		removeSeat: useCallback(
 			(seatId: string) => send({ type: 'removeSeat', seatId }),
 			[send]

@@ -4,7 +4,7 @@
  * Character ids are permanent once deployed — see the note in ./index.ts.
  */
 
-import { tone, type CharacterSet } from '~/utils/characters'
+import { voice, type CharacterSet } from '~/utils/characters'
 
 export default {
 	id: 'animals',
@@ -17,14 +17,7 @@ export default {
 			emoji: '🐻',
 			tagline: 'のっそり低音',
 			image: '/characters/animals/bear.svg',
-			voice: {
-				pitchRatio: 0.72,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(5, 900, -3, 1, -4),
-			},
+			voice: voice(-0.62, -0.55, -0.25),
 		},
 		{
 			id: 'rabbit',
@@ -32,14 +25,7 @@ export default {
 			emoji: '🐰',
 			tagline: 'ぴょこぴょこ高音',
 			image: '/characters/animals/rabbit.svg',
-			voice: {
-				pitchRatio: 1.42,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-4, 2600, 3, 1, 2),
-			},
+			voice: voice(0.82, 0.45, 0.35),
 		},
 		{
 			id: 'fox',
@@ -47,14 +33,7 @@ export default {
 			emoji: '🦊',
 			tagline: 'すこし高めの早口',
 			image: '/characters/animals/fox.svg',
-			voice: {
-				pitchRatio: 1.16,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-2, 3000, 4, 1.2, 1),
-			},
+			voice: voice(0.44, 0.35, 0.45),
 		},
 		{
 			id: 'tanuki',
@@ -62,14 +41,7 @@ export default {
 			emoji: '🦝',
 			tagline: 'まるっと落ち着いた声',
 			image: '/characters/animals/tanuki.svg',
-			voice: {
-				pitchRatio: 0.86,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(3, 1200, 2, 0.9, -2),
-			},
+			voice: voice(-0.4, -0.35, -0.4),
 		},
 		{
 			id: 'cat',
@@ -77,14 +49,7 @@ export default {
 			emoji: '🐱',
 			tagline: 'つんとした高音',
 			image: '/characters/animals/cat.svg',
-			voice: {
-				pitchRatio: 1.32,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-3, 3400, 3, 1.4, 2),
-			},
+			voice: voice(0.69, 0.3, 0.6),
 		},
 		{
 			id: 'dog',
@@ -92,14 +57,7 @@ export default {
 			emoji: '🐶',
 			tagline: 'ちょっとだけ低い',
 			image: '/characters/animals/dog.svg',
-			voice: {
-				pitchRatio: 0.92,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(2, 800, 3, 0.8, -1),
-			},
+			voice: voice(-0.18, 0.1, 0.1, 0.15),
 		},
 		{
 			id: 'owl',
@@ -107,14 +65,7 @@ export default {
 			emoji: '🦉',
 			tagline: 'こもった重低音',
 			image: '/characters/animals/owl.svg',
-			voice: {
-				pitchRatio: 0.78,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(4, 500, 5, 0.7, -8),
-			},
+			voice: voice(-0.73, -0.7, -0.55),
 		},
 		{
 			id: 'penguin',
@@ -122,14 +73,7 @@ export default {
 			emoji: '🐧',
 			tagline: 'ぱたぱた明るい声',
 			image: '/characters/animals/penguin.svg',
-			voice: {
-				pitchRatio: 1.24,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-2, 2200, 3, 1, 1),
-			},
+			voice: voice(0.56, 0.55, 0.15),
 		},
 		{
 			id: 'frog',
@@ -137,14 +81,7 @@ export default {
 			emoji: '🐸',
 			tagline: 'げこげこ潰れ声',
 			image: '/characters/animals/frog.svg',
-			voice: {
-				pitchRatio: 0.66,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 55,
-				ringModDepth: 0.22,
-				tone: tone(2, 700, 6, 1.6, -6),
-			},
+			voice: voice(-0.51, -0.15, 0.3, 0.55),
 		},
 		{
 			id: 'sheep',
@@ -152,14 +89,7 @@ export default {
 			emoji: '🐑',
 			tagline: 'ふるえる甘い声',
 			image: '/characters/animals/sheep.svg',
-			voice: {
-				pitchRatio: 1.1,
-				vibratoRate: 5.5,
-				vibratoDepth: 0.55,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-1, 2000, 2, 1, 1),
-			},
+			voice: voice(0.31, 0.2, 0.55, 0.3),
 		},
 		{
 			id: 'dragon',
@@ -167,14 +97,7 @@ export default {
 			emoji: '🐲',
 			tagline: '地の底からの声',
 			image: '/characters/animals/dragon.svg',
-			voice: {
-				pitchRatio: 0.58,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(7, 600, 3, 0.8, -6),
-			},
+			voice: voice(-0.95, -0.45, -0.15, 0.35),
 		},
 		{
 			id: 'robot',
@@ -183,16 +106,7 @@ export default {
 			tagline: 'ビリビリ電子音',
 			image: '/characters/animals/robot.svg',
 			// the disguise here comes from the ring modulator, not the pitch
-			voice: {
-				// deliberately not exactly 1.0: a static grain phase would turn the
-				// shifter's two taps into a fixed comb filter
-				pitchRatio: 0.94,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 42,
-				ringModDepth: 0.85,
-				tone: tone(-6, 1600, 6, 2, 3),
-			},
+			voice: voice(0.18, 0.25, 0.2, 0.85),
 		},
 		{
 			id: 'alien',
@@ -200,14 +114,7 @@ export default {
 			emoji: '👽',
 			tagline: 'きんきん宇宙声',
 			image: '/characters/animals/alien.svg',
-			voice: {
-				pitchRatio: 1.62,
-				vibratoRate: 7,
-				vibratoDepth: 0.2,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-8, 3800, 5, 1.5, 3),
-			},
+			voice: voice(0.95, 0.7, 0.5, 0.2),
 		},
 		{
 			id: 'ghost',
@@ -215,14 +122,7 @@ export default {
 			emoji: '👻',
 			tagline: 'ゆらゆら不気味な声',
 			image: '/characters/animals/ghost.svg',
-			voice: {
-				pitchRatio: 0.82,
-				vibratoRate: 3.2,
-				vibratoDepth: 0.85,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(2, 1100, -4, 0.8, -3),
-			},
+			voice: voice(-0.29, -0.25, -0.65, 0.25),
 		},
 		{
 			id: 'lion',
@@ -230,14 +130,7 @@ export default {
 			emoji: '🦁',
 			tagline: 'どっしり太い声',
 			image: '/characters/animals/lion.svg',
-			voice: {
-				pitchRatio: 0.7,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(6, 700, 4, 0.9, -5),
-			},
+			voice: voice(-0.84, -0.6, -0.05, 0.2),
 		},
 	],
 } satisfies CharacterSet

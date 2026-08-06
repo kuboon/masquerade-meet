@@ -4,15 +4,14 @@
  * Character ids are permanent once deployed — see the note in ./index.ts.
  * Adding to this list later is safe; renaming or removing is not.
  *
- * The voices are laid out in one pass, spread from 0.58 to 1.90 with a gap
- * between every neighbour so that no two performers can be mistaken for one
- * another. Nothing sits near 1.0: a ratio that close leaves the speaker
- * recognisable, which is the one thing a mask may not do. They have not been
- * listened to character by character — that is what /dev/voice is for, and
- * these numbers are meant to be replaced.
+ * The voices run bottom to top by size, with a gap between every neighbour
+ * so that no two performers can be mistaken for one another, and nobody sits
+ * near zero: a body the same size as your own leaves you recognisable, which
+ * is the one thing a mask may not do. They have not been listened to
+ * character by character — that is what /dev/voice is for.
  */
 
-import { tone, type CharacterSet } from '~/utils/characters'
+import { voice, type CharacterSet } from '~/utils/characters'
 
 export default {
 	id: 'circus',
@@ -25,14 +24,7 @@ export default {
 			emoji: '🦁',
 			tagline: 'ごろごろ重低音',
 			image: '/characters/circus/lion.png',
-			voice: {
-				pitchRatio: 0.58,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(6, 700, -3, 1, -6),
-			},
+			voice: voice(-0.95, -0.6, -0.05, 0.2),
 		},
 		{
 			id: 'ringmaster',
@@ -40,14 +32,7 @@ export default {
 			emoji: '🎩',
 			tagline: '威厳のある低音',
 			image: '/characters/circus/ringmaster.png',
-			voice: {
-				pitchRatio: 0.66,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(4, 900, -2, 1, -3),
-			},
+			voice: voice(-0.8, -0.4, -0.2),
 		},
 		{
 			id: 'firebreather',
@@ -55,16 +40,7 @@ export default {
 			emoji: '🔥',
 			tagline: 'しゃがれた大声',
 			image: '/characters/circus/firebreather.png',
-			voice: {
-				pitchRatio: 0.72,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				// A little rasp rather than a robot: the carrier is low and the
-				// wet amount small, so it roughens the voice instead of ringing.
-				ringModHz: 38,
-				ringModDepth: 0.18,
-				tone: tone(1, 1600, 5, 1.4, 0),
-			},
+			voice: voice(-0.64, -0.1, 0.25, 0.6),
 		},
 		{
 			id: 'organ',
@@ -72,14 +48,7 @@ export default {
 			emoji: '🪗',
 			tagline: 'しわがれた語り口',
 			image: '/characters/circus/organ.png',
-			voice: {
-				pitchRatio: 0.8,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				tone: tone(3, 1300, -4, 1.1, -1),
-				ringModHz: 0,
-				ringModDepth: 0,
-			},
+			voice: voice(-0.49, -0.3, -0.45, 0.3),
 		},
 		{
 			id: 'magician',
@@ -87,14 +56,7 @@ export default {
 			emoji: '🪄',
 			tagline: 'しっとり低め',
 			image: '/characters/circus/magician.png',
-			voice: {
-				pitchRatio: 0.88,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(2, 1100, -3, 1.2, 2),
-			},
+			voice: voice(-0.33, -0.2, 0.05),
 		},
 		{
 			id: 'knifethrower',
@@ -102,14 +64,7 @@ export default {
 			emoji: '🔪',
 			tagline: '鋭くとがった声',
 			image: '/characters/circus/knifethrower.png',
-			voice: {
-				pitchRatio: 0.94,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-3, 2200, 4, 1.6, 3),
-			},
+			voice: voice(-0.18, 0.3, 0.35, 0.1),
 		},
 		{
 			id: 'ticket',
@@ -117,14 +72,7 @@ export default {
 			emoji: '🎫',
 			tagline: 'きっちり事務的',
 			image: '/characters/circus/ticket.png',
-			voice: {
-				pitchRatio: 1.1,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-1, 1800, 1, 1, 0),
-			},
+			voice: voice(0.18, 0.05, 0.0),
 		},
 		{
 			id: 'popcorn',
@@ -132,14 +80,7 @@ export default {
 			emoji: '🍿',
 			tagline: 'はずんだ売り声',
 			image: '/characters/circus/popcorn.png',
-			voice: {
-				pitchRatio: 1.18,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-2, 2400, 3, 1.2, 2),
-			},
+			voice: voice(0.37, 0.45, 0.2),
 		},
 		{
 			id: 'juggler',
@@ -147,14 +88,7 @@ export default {
 			emoji: '🤹',
 			tagline: '軽やかな早口',
 			image: '/characters/circus/juggler.png',
-			voice: {
-				pitchRatio: 1.26,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-2, 2600, 2, 1.4, 2),
-			},
+			voice: voice(0.47, 0.35, 0.5),
 		},
 		{
 			id: 'clown',
@@ -162,14 +96,7 @@ export default {
 			emoji: '🤡',
 			tagline: 'ふるえる裏声',
 			image: '/characters/circus/clown.png',
-			voice: {
-				pitchRatio: 1.34,
-				vibratoRate: 6.5,
-				vibratoDepth: 0.5,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-3, 2000, 4, 1.2, 3),
-			},
+			voice: voice(0.66, 0.25, 0.65, 0.25),
 		},
 		{
 			id: 'cottoncandy',
@@ -177,14 +104,7 @@ export default {
 			emoji: '🍭',
 			tagline: 'ふわふわ甘い声',
 			image: '/characters/circus/cottoncandy.png',
-			voice: {
-				pitchRatio: 1.44,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-2, 2200, 1, 0.9, 1),
-			},
+			voice: voice(0.28, 0.15, -0.2),
 		},
 		{
 			id: 'dancer',
@@ -192,14 +112,7 @@ export default {
 			emoji: '💃',
 			tagline: 'よく通る高音',
 			image: '/characters/circus/dancer.png',
-			voice: {
-				pitchRatio: 1.54,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-3, 2500, 4, 1.1, 2),
-			},
+			voice: voice(0.57, 0.5, 0.1),
 		},
 		{
 			id: 'ropewalker',
@@ -207,14 +120,7 @@ export default {
 			emoji: '🎪',
 			tagline: 'ふわり高音',
 			image: '/characters/circus/ropewalker.png',
-			voice: {
-				pitchRatio: 1.64,
-				vibratoRate: 3,
-				vibratoDepth: 0.2,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-4, 2800, 3, 1, 3),
-			},
+			voice: voice(0.76, 0.6, -0.15),
 		},
 		{
 			id: 'monkey',
@@ -222,14 +128,7 @@ export default {
 			emoji: '🐒',
 			tagline: 'きいきい騒がしい',
 			image: '/characters/circus/monkey.png',
-			voice: {
-				pitchRatio: 1.76,
-				vibratoRate: 8,
-				vibratoDepth: 0.35,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-6, 3000, 5, 1.6, 3),
-			},
+			voice: voice(0.86, 0.4, 0.55, 0.35),
 		},
 		{
 			id: 'parrot',
@@ -237,14 +136,7 @@ export default {
 			emoji: '🦜',
 			tagline: 'かん高いしゃべり',
 			image: '/characters/circus/parrot.png',
-			voice: {
-				pitchRatio: 1.9,
-				vibratoRate: 0,
-				vibratoDepth: 0,
-				ringModHz: 0,
-				ringModDepth: 0,
-				tone: tone(-8, 3200, 6, 2, 4),
-			},
+			voice: voice(0.95, 0.75, 0.7, 0.15),
 		},
 	],
 } satisfies CharacterSet

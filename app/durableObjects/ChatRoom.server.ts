@@ -24,6 +24,7 @@ import {
 	nextHost,
 	restartParticipant,
 	shuffled,
+	startCountdownMs,
 } from '~/utils/masquerade'
 
 import { eq, sql } from 'drizzle-orm'
@@ -56,6 +57,7 @@ const REVEAL_AT_KEY = 'masquerade:revealAt'
 const HOST_KEY = 'masquerade:hostId'
 const CHARACTER_SET_KEY = 'masquerade:characterSetId'
 const SEATS_KEY = 'masquerade:seats'
+const START_AT_KEY = 'masquerade:startAt'
 
 /** Long enough for a real name, short enough not to break the tiles. */
 const MAX_NAME_LENGTH = 40
@@ -111,8 +113,9 @@ export class ChatRoom extends Server<Env> {
 			this.ctx.storage.setAlarm(Date.now() + alarmInterval)
 		}
 
-		// May be null. The name is asked for in the lobby, and nobody can ready
-		// up without one, so a seat starts out anonymous rather than refused.
+		// May be null. The name is asked for in the lobby, and the meeting
+		// leaves behind anybody without one, so a seat starts out anonymous
+		// rather than refused.
 		const username = (await getUsername(ctx.request)) ?? ''
 
 		const characterSet = getCharacterSet(await this.resolveCharacterSetId(ctx))
@@ -137,7 +140,6 @@ export class ChatRoom extends Server<Env> {
 					characterSet,
 					new URL(ctx.request.url).searchParams.get('want')
 				),
-				ready: false,
 				joined: false,
 				raisedHand: false,
 				speaking: false,
@@ -271,11 +273,21 @@ export class ChatRoom extends Server<Env> {
 	async getMasqueradeState(): Promise<MasqueradeState> {
 		let phase = (await this.ctx.storage.get<RoomPhase>(PHASE_KEY)) ?? 'lobby'
 		const revealAt = await this.ctx.storage.get<number>(REVEAL_AT_KEY)
+		let startAt = await this.ctx.storage.get<number>(START_AT_KEY)
 		const now = Date.now()
 
 		if (phase === 'revealing' && revealAt !== undefined && now >= revealAt) {
 			phase = 'revealed'
 			await this.ctx.storage.put(PHASE_KEY, phase)
+		}
+
+		// Same lazily as the reveal: whoever reads the room next brings it up
+		// to date, so a client that connects or reconnects across the deadline
+		// lands in the right place even if the alarm has not fired yet.
+		if (phase === 'lobby' && startAt !== undefined && now >= startAt) {
+			await this.beginMeeting()
+			phase = 'masquerade'
+			startAt = undefined
 		}
 
 		return {
@@ -287,7 +299,49 @@ export class ChatRoom extends Server<Env> {
 				(await this.ctx.storage.get<string>(CHARACTER_SET_KEY)) ??
 				defaultCharacterSetId,
 			seats: await this.getSeats(),
+			startAt,
 		}
+	}
+
+	/**
+	 * Turns the lobby into a meeting, on the deadline the host set.
+	 *
+	 * Whatever anybody has not settled by now is settled for them: a wish that
+	 * clashed, or no wish at all, becomes whichever face is still going. The
+	 * one thing that cannot be decided on somebody's behalf is the name they
+	 * will be unmasked as, so anybody without one is left in the lobby — they
+	 * are not thrown out, and typing a name walks them in.
+	 */
+	private async beginMeeting() {
+		const meetingId = await this.getMeetingId()
+		const everyone = [...(await this.getUsers()).values()]
+		const joining = everyone.filter((user) => user.realName !== '')
+		const characterSet = getCharacterSet(
+			await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+		)
+
+		const assigned = assignCharacters(
+			joining,
+			characterSet.characters.map((c) => c.id)
+		)
+		for (const user of joining) {
+			await this.ctx.storage.put(`session-${user.id}`, {
+				...user,
+				characterId: assigned.get(user.id) ?? user.characterId,
+			} satisfies StoredUser)
+		}
+
+		// Where everybody sits, settled once so that every screen in the room
+		// looks the same. Shuffled, because seating people in the order they
+		// arrived would tell the room something it is not supposed to know.
+		await this.ctx.storage.put(SEATS_KEY, shuffled(joining.map((u) => u.id)))
+		await this.ctx.storage.put(PHASE_KEY, 'masquerade' satisfies RoomPhase)
+		await this.ctx.storage.delete(START_AT_KEY)
+		log({
+			eventName: 'meetingStarted',
+			meetingId,
+			users: joining.length,
+		})
 	}
 
 	async getSeats(): Promise<string[]> {
@@ -456,7 +510,6 @@ export class ChatRoom extends Server<Env> {
 								{
 									id: 'ai',
 									name: 'AI',
-									ready: true,
 									joined: true,
 									raisedHand: false,
 									transceiverSessionId: aiSessionId,
@@ -564,6 +617,27 @@ export class ChatRoom extends Server<Env> {
 						...stored,
 						realName: name,
 					} satisfies StoredUser)
+
+					// Somebody who had no name when the meeting began was left in
+					// the lobby, so the draw passed them by and their wish may be
+					// on somebody else's face by now. Giving them a name is what
+					// lets them in, so this is where that is put right.
+					const { phase: nowPhase } = await this.getMasqueradeState()
+					if (name !== '' && nowPhase !== 'lobby') {
+						const set = getCharacterSet(
+							await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+						)
+						const taken = await this.getTakenCharacterIds(connection.id)
+						if (!stored.characterId || taken.has(stored.characterId)) {
+							const free = await this.pickCharacterPreference(set)
+							await this.ctx.storage.put(`session-${connection.id}`, {
+								...stored,
+								realName: name,
+								characterId: free,
+							} satisfies StoredUser)
+						}
+						await this.takeSeat(connection.id)
+					}
 					await this.broadcastRoomState()
 					break
 				}
@@ -594,65 +668,30 @@ export class ChatRoom extends Server<Env> {
 					await this.broadcastRoomState()
 					break
 				}
-				case 'setReady': {
-					const stored = await this.ctx.storage.get<StoredUser>(
-						`session-${connection.id}`
-					)
-					if (!stored) break
-					// Without a character there is nothing to hide behind, and
-					// without a name the reveal at the end has nothing to reveal.
-					if (data.ready && (!stored.characterId || !stored.realName)) break
-					await this.ctx.storage.put(`session-${connection.id}`, {
-						...stored,
-						ready: data.ready,
-					} satisfies StoredUser)
-					await this.broadcastRoomState()
-					break
-				}
 				case 'startMeeting': {
 					const hostId = await this.ensureHost()
 					if (hostId !== connection.id) break
-					const { phase } = await this.getMasqueradeState()
-					if (phase !== 'lobby') break
+					const { phase, startAt } = await this.getMasqueradeState()
+					if (phase !== 'lobby' || startAt !== undefined) break
 
 					const users = [...(await this.getUsers()).values()]
 					const characterSet = getCharacterSet(
 						await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
 					)
-					// "everyone is here" is the whole point — don't start early,
-					// and don't start a masquerade the host would be attending
-					// alone. Nor one where somebody has no face to wear.
+					// A masquerade the host attends alone is a person in a mask in
+					// an empty room, and one with more people than faces cannot be
+					// dealt. Nobody is waited on beyond that.
 					if (!canStartMeeting(users, characterSet.characters.length)) break
 
-					// Everyone picked freely, so two people may want the same
-					// character. Settle it here, in one draw, before anyone is
-					// hidden behind anything.
-					const assigned = assignCharacters(
-						users,
-						characterSet.characters.map((c) => c.id)
-					)
-					for (const user of users) {
-						await this.ctx.storage.put(`session-${user.id}`, {
-							...user,
-							characterId: assigned.get(user.id),
-						} satisfies StoredUser)
-					}
-
-					// Where everybody sits, settled once so that every screen in
-					// the room looks the same. Shuffled, because seating people
-					// in the order they arrived would tell the room something it
-					// is not supposed to know.
-					await this.ctx.storage.put(
-						SEATS_KEY,
-						shuffled(users.map((u) => u.id))
-					)
-
-					await this.ctx.storage.put(
-						PHASE_KEY,
-						'masquerade' satisfies RoomPhase
-					)
-					log({ eventName: 'meetingStarted', meetingId, users: users.length })
+					// Not a start: a deadline. Anybody still choosing has until it
+					// falls, and whatever is unsettled by then is settled for them.
+					const beginAt = Date.now() + startCountdownMs
+					await this.ctx.storage.put(START_AT_KEY, beginAt)
+					log({ eventName: 'meetingStarting', meetingId, startAt: beginAt })
 					await this.broadcastRoomState()
+					// Land an alarm exactly on the deadline, so a room nobody is
+					// touching still begins on time.
+					await this.scheduleNextAlarm()
 					break
 				}
 				case 'startReveal': {
@@ -699,6 +738,7 @@ export class ChatRoom extends Server<Env> {
 					}
 					await this.ctx.storage.put(PHASE_KEY, 'lobby' satisfies RoomPhase)
 					await this.ctx.storage.delete(REVEAL_AT_KEY)
+					await this.ctx.storage.delete(START_AT_KEY)
 					// A new round is dealt new faces, and gets a new seating
 					// chart with them.
 					await this.ctx.storage.delete(SEATS_KEY)
@@ -1037,12 +1077,15 @@ export class ChatRoom extends Server<Env> {
 	async scheduleNextAlarm() {
 		const phase = await this.ctx.storage.get<RoomPhase>(PHASE_KEY)
 		const revealAt = await this.ctx.storage.get<number>(REVEAL_AT_KEY)
+		const startAt = await this.ctx.storage.get<number>(START_AT_KEY)
 		const heartbeatAt = Date.now() + alarmInterval
-		const next =
-			phase === 'revealing' && revealAt !== undefined && revealAt < heartbeatAt
-				? revealAt
-				: heartbeatAt
-		await this.ctx.storage.setAlarm(next)
+		const deadlines = [
+			phase === 'revealing' ? revealAt : undefined,
+			// A room where the host presses go and everybody then sits still
+			// has nothing else to wake it, so the deadline has to.
+			phase === undefined || phase === 'lobby' ? startAt : undefined,
+		].filter((at): at is number => at !== undefined && at < heartbeatAt)
+		await this.ctx.storage.setAlarm(Math.min(heartbeatAt, ...deadlines))
 	}
 
 	async endMeeting(meetingId: string) {
