@@ -1,5 +1,5 @@
 /**
- * The stock set: the fifteen animals the game shipped with.
+ * The stock set: twelve animals, and three things that are not.
  *
  * Character ids are permanent once deployed — see the note in ./index.ts.
  */
@@ -8,7 +8,7 @@ import { voice, type CharacterSet } from '~/utils/characters'
 
 export default {
 	id: 'animals',
-	name: 'どうぶつ',
+	name: 'どうぶつさん',
 	tagline: 'くまからライオンまで、なじみのある 15 匹',
 	characters: [
 		{
@@ -16,7 +16,7 @@ export default {
 			name: 'くまごろう',
 			emoji: '🐻',
 			tagline: 'のっそり低音',
-			image: '/characters/animals/bear.svg',
+			image: '/characters/animals/bear.png',
 			voice: voice(-0.62, -0.55, -0.25),
 		},
 		{
@@ -24,7 +24,7 @@ export default {
 			name: 'うさぴょん',
 			emoji: '🐰',
 			tagline: 'ぴょこぴょこ高音',
-			image: '/characters/animals/rabbit.svg',
+			image: '/characters/animals/rabbit.png',
 			voice: voice(0.82, 0.45, 0.35),
 		},
 		{
@@ -32,7 +32,7 @@ export default {
 			name: 'こんきち',
 			emoji: '🦊',
 			tagline: 'すこし高めの早口',
-			image: '/characters/animals/fox.svg',
+			image: '/characters/animals/fox.png',
 			voice: voice(0.44, 0.35, 0.45),
 		},
 		{
@@ -40,7 +40,7 @@ export default {
 			name: 'ぽんぽこ',
 			emoji: '🦝',
 			tagline: 'まるっと落ち着いた声',
-			image: '/characters/animals/tanuki.svg',
+			image: '/characters/animals/tanuki.png',
 			voice: voice(-0.4, -0.35, -0.4),
 		},
 		{
@@ -48,7 +48,7 @@ export default {
 			name: 'にゃんきち',
 			emoji: '🐱',
 			tagline: 'つんとした高音',
-			image: '/characters/animals/cat.svg',
+			image: '/characters/animals/cat.png',
 			voice: voice(0.69, 0.3, 0.6),
 		},
 		{
@@ -56,7 +56,7 @@ export default {
 			name: 'わんすけ',
 			emoji: '🐶',
 			tagline: 'ちょっとだけ低い',
-			image: '/characters/animals/dog.svg',
+			image: '/characters/animals/dog.png',
 			voice: voice(-0.18, 0.1, 0.1, 0.15),
 		},
 		{
@@ -64,7 +64,7 @@ export default {
 			name: 'ふくろうはかせ',
 			emoji: '🦉',
 			tagline: 'こもった重低音',
-			image: '/characters/animals/owl.svg',
+			image: '/characters/animals/owl.png',
 			voice: voice(-0.73, -0.7, -0.55),
 		},
 		{
@@ -72,7 +72,7 @@ export default {
 			name: 'ぺんぺん',
 			emoji: '🐧',
 			tagline: 'ぱたぱた明るい声',
-			image: '/characters/animals/penguin.svg',
+			image: '/characters/animals/penguin.png',
 			voice: voice(0.56, 0.55, 0.15),
 		},
 		{
@@ -80,7 +80,7 @@ export default {
 			name: 'けろすけ',
 			emoji: '🐸',
 			tagline: 'げこげこ潰れ声',
-			image: '/characters/animals/frog.svg',
+			image: '/characters/animals/frog.png',
 			voice: voice(-0.51, -0.15, 0.3, 0.55),
 		},
 		{
@@ -88,7 +88,7 @@ export default {
 			name: 'めーちゃん',
 			emoji: '🐑',
 			tagline: 'ふるえる甘い声',
-			image: '/characters/animals/sheep.svg',
+			image: '/characters/animals/sheep.png',
 			voice: voice(0.31, 0.2, 0.55, 0.3),
 		},
 		{
@@ -96,7 +96,7 @@ export default {
 			name: 'どらごん',
 			emoji: '🐲',
 			tagline: '地の底からの声',
-			image: '/characters/animals/dragon.svg',
+			image: '/characters/animals/dragon.png',
 			voice: voice(-0.95, -0.45, -0.15, 0.35),
 		},
 		{
@@ -104,7 +104,7 @@ export default {
 			name: 'ロボ丸',
 			emoji: '🤖',
 			tagline: 'ビリビリ電子音',
-			image: '/characters/animals/robot.svg',
+			image: '/characters/animals/robot.png',
 			// the disguise here comes from the ring modulator, not the pitch
 			voice: voice(0.18, 0.25, 0.2, 0.85),
 		},
@@ -113,7 +113,7 @@ export default {
 			name: 'うちゅうくん',
 			emoji: '👽',
 			tagline: 'きんきん宇宙声',
-			image: '/characters/animals/alien.svg',
+			image: '/characters/animals/alien.png',
 			voice: voice(0.95, 0.7, 0.5, 0.2),
 		},
 		{
@@ -121,7 +121,7 @@ export default {
 			name: 'おばけん',
 			emoji: '👻',
 			tagline: 'ゆらゆら不気味な声',
-			image: '/characters/animals/ghost.svg',
+			image: '/characters/animals/ghost.png',
 			voice: voice(-0.29, -0.25, -0.65, 0.25),
 		},
 		{
@@ -129,7 +129,7 @@ export default {
 			name: 'らいおん丸',
 			emoji: '🦁',
 			tagline: 'どっしり太い声',
-			image: '/characters/animals/lion.svg',
+			image: '/characters/animals/lion.png',
 			voice: voice(-0.84, -0.6, -0.05, 0.2),
 		},
 	],
