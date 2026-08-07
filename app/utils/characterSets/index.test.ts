@@ -99,6 +99,16 @@ for (const set of characterSets) {
 			}
 		})
 
+		it('has a banner of its own, and has it on disk', () => {
+			// The landing page is the one place a set is advertised rather than
+			// used, and a missing banner there is a broken image on the front
+			// door — where nobody has yet decided to stay.
+			expect(set.banner).toMatch(
+				new RegExp(`^/characters/${set.id}/banner\\.[a-z]+$`)
+			)
+			expect(existsSync(join(process.cwd(), 'public', set.banner))).toBe(true)
+		})
+
 		it('keeps every axis inside the range a slider offers', () => {
 			// A character outside it cannot be reproduced by anybody tuning
 			// their own voice, and the preview would stop matching the meeting.

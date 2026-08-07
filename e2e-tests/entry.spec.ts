@@ -9,6 +9,15 @@ test('the landing page only offers to make a room', async ({ page }) => {
 	// Joining by typing a room name is gone — a room is something you are
 	// given a link to.
 	await expect(page.getByLabel('ルーム名')).toHaveCount(0)
+
+	// Each set is advertised by a banner with its name drawn into it, so a
+	// banner that fails to load takes the set's name down with it.
+	const broken = await page.evaluate(() =>
+		[...document.querySelectorAll('img')]
+			.filter((image) => !image.complete || image.naturalWidth === 0)
+			.map((image) => image.src)
+	)
+	expect(broken).toEqual([])
 })
 
 test('goes straight into the room without asking for a name first', async ({
@@ -34,9 +43,9 @@ test('carries the chosen character set into the room', async ({ page }) => {
 	// The set travels in the URL because the room pins whatever the first
 	// connection asks for, and the link is what everyone else follows.
 	await page.goto('/')
-	// The card is the target; the radio inside it is only there so the form
-	// works before the JavaScript arrives.
-	await page.getByText('サーカス団', { exact: true }).click()
+	// The banner is the target; the radio behind it is only there so the form
+	// works before the JavaScript arrives, and is hidden from sight.
+	await page.getByRole('img', { name: 'サーカス団' }).click()
 	await expect(page.getByRole('radio', { name: 'サーカス団' })).toBeChecked()
 	await page.getByRole('button', { name: 'ルームを作る' }).click()
 	await expect(page).toHaveURL(/\/[A-Za-z0-9_-]{8}\?set=circus$/)
@@ -54,7 +63,7 @@ test('hands out a link with nothing but the room in it', async ({
 	const page = await context.newPage()
 
 	await page.goto('/')
-	await page.getByText('サーカス団', { exact: true }).click()
+	await page.getByRole('img', { name: 'サーカス団' }).click()
 	await page.getByRole('button', { name: 'ルームを作る' }).click()
 	const allow = page.getByRole('button', { name: '権限を許可する' })
 	await allow.waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {})
