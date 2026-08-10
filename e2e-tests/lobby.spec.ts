@@ -9,6 +9,25 @@ async function pastPermissions(page: Page) {
 	if (await allow.isVisible().catch(() => false)) await allow.click()
 }
 
+/**
+ * Five seconds of the fake capture device, left to stop itself.
+ *
+ * Cutting the recording short is what a person would do, but it races the
+ * recorder: too little audio to decode and the page reports that instead of
+ * offering playback. The tests below are about the sliders, not about how
+ * short a clip the decoder will take.
+ */
+async function record(page: Page) {
+	await page.getByRole('button', { name: '声を録音する' }).click()
+	await expect(page.getByRole('button', { name: '録音を止める' })).toBeVisible()
+	await expect(page.getByRole('button', { name: '録音し直す' })).toBeVisible({
+		timeout: 20_000,
+	})
+	await expect(
+		page.getByRole('button', { name: '変換した声を聴く' })
+	).toBeVisible({ timeout: 20_000 })
+}
+
 const room = () => `lobby-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
 // Everything here waits on something real — five seconds of recording, ten
@@ -67,12 +86,7 @@ test('lets somebody hear and retune their voice before the draw', async ({
 	// Nothing to tune until there is something to listen to.
 	await expect(page.getByRole('slider')).toHaveCount(0)
 
-	await page.getByRole('button', { name: '声を録音する' }).click()
-	await expect(page.getByRole('button', { name: '録音を止める' })).toBeVisible()
-	await page.getByRole('button', { name: '録音を止める' }).click()
-	await expect(
-		page.getByRole('button', { name: '変換した声を聴く' })
-	).toBeVisible({ timeout: 20_000 })
+	await record(page)
 
 	// Four controls, and no more: the whole voice fits on one screen.
 	const sliders = page.getByRole('slider')
@@ -100,11 +114,7 @@ test('says so when the sliders leave you sounding like yourself', async ({
 	await page.goto(`/${room()}`)
 	await pastPermissions(page)
 
-	await page.getByRole('button', { name: '声を録音する' }).click()
-	await page.getByRole('button', { name: '録音を止める' }).click()
-	await expect(
-		page.getByRole('button', { name: '変換した声を聴く' })
-	).toBeVisible({ timeout: 20_000 })
+	await record(page)
 
 	const warning = page.getByText('いまの設定では地声とほとんど変わりません')
 	// Whichever character the room dealt, it is a disguise to begin with.
@@ -122,4 +132,46 @@ test('says so when the sliders leave you sounding like yourself', async ({
 	await page.getByLabel('かすれ (数値)').fill('0')
 	await page.getByLabel('体の大きさ (数値)').fill('-0.5')
 	await expect(warning).toHaveCount(0)
+})
+
+test('tells the host their lobby voice is their own, and only the host', async ({
+	browser,
+}) => {
+	const name = room()
+
+	// Whoever arrives first runs the room, so this page is the host.
+	const host = await browser.newPage()
+	await host.goto(`/${name}`)
+	await pastPermissions(host)
+
+	const speaking = host.getByText('待っている人には、あなたの声がそのまま')
+	const muted = host.getByText('マイクをオンにすると、待っている人に声を')
+
+	// Which one is showing depends on whether the microphone starts
+	// broadcasting, which differs between the dev server and the built
+	// worker. Both branches are worth seeing, so drive it rather than
+	// assuming.
+	await expect(speaking.or(muted)).toBeVisible({ timeout: 20_000 })
+	const wasSpeaking = await speaking.isVisible()
+	await host
+		.getByRole('button', { name: wasSpeaking ? 'Turn mic off' : 'Turn mic on' })
+		.click()
+	await expect(wasSpeaking ? muted : speaking).toBeVisible()
+	await expect(wasSpeaking ? speaking : muted).toHaveCount(0)
+
+	// Nobody else is offered it. A guest's microphone reaches no one in the
+	// lobby, disguised or not, so there is nothing to tell them about.
+	const guest = await browser.newPage()
+	await guest.goto(`/${name}`)
+	await pastPermissions(guest)
+	await expect(guest.getByText('2人が待機中')).toBeVisible({ timeout: 20_000 })
+	await expect(
+		guest.getByText('待っている人には、あなたの声がそのまま')
+	).toHaveCount(0)
+	await expect(
+		guest.getByText('マイクをオンにすると、待っている人に声を')
+	).toHaveCount(0)
+	// And with no Realtime session here there is no track to pull, so the
+	// listening side stays quiet rather than claiming somebody is talking.
+	await expect(guest.getByText('ルーム管理者が話しています')).toHaveCount(0)
 })

@@ -101,6 +101,34 @@ export function restartParticipant<
 }
 
 /**
+ * Whether somebody's microphone goes out as their own voice.
+ *
+ * Two cases, and no others. After the reveal there is nothing left to hide.
+ * And the host while the room is still in the lobby, so that whoever is
+ * running it can tell everyone what is about to happen — at the price of
+ * their own reveal, which is theirs to pay and nobody else's.
+ *
+ * Everything else is disguised, the host included from the moment the phase
+ * leaves the lobby. That happens when the start deadline falls, which is
+ * before anybody is carried into the room.
+ *
+ * Kept here, apart from the audio graph it drives, because getting it wrong
+ * is not a bug you can hear until somebody has already been recognised.
+ */
+export function speaksUndisguised({
+	phase,
+	revealed,
+	isHost,
+}: {
+	phase: RoomPhase
+	/** true once this client has actually dropped its disguise */
+	revealed: boolean
+	isHost: boolean
+}): boolean {
+	return revealed || (isHost && phase === 'lobby')
+}
+
+/**
  * A copy in a random order. Fisher-Yates, with the source of randomness
  * injectable so the outcome can be pinned down in a test.
  */

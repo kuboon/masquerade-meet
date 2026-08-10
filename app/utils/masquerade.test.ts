@@ -6,6 +6,7 @@ import {
 	minimumParticipants,
 	nextHost,
 	restartParticipant,
+	speaksUndisguised,
 } from './masquerade'
 
 const CAPACITY = 15
@@ -204,5 +205,46 @@ describe('assignCharacters', () => {
 			winners.add(assigned.get('a') === 'bear' ? 'a' : 'b')
 		}
 		expect(winners.size).toBe(2)
+	})
+})
+
+describe('speaksUndisguised', () => {
+	const guest = { phase: 'lobby' as const, revealed: false, isHost: false }
+	const host = { ...guest, isHost: true }
+
+	it('lets the host be heard while the room is still waiting', () => {
+		// Somebody has to be able to say what is about to happen, and a mask
+		// is in the way of that.
+		expect(speaksUndisguised(host)).toBe(true)
+	})
+
+	it('keeps everybody else disguised in the lobby', () => {
+		// Their microphone reaches nobody there either, but the disguise is
+		// what makes that safe rather than incidental.
+		expect(speaksUndisguised(guest)).toBe(false)
+	})
+
+	it('puts the host back behind the mask once the meeting starts', () => {
+		// The phase leaves the lobby when the start deadline falls, which is
+		// before anybody is carried into the room — so this is what stops the
+		// host walking in still sounding like themselves.
+		expect(speaksUndisguised({ ...host, phase: 'masquerade' })).toBe(false)
+		expect(speaksUndisguised({ ...host, phase: 'revealing' })).toBe(false)
+	})
+
+	it("drops everyone's disguise at the reveal", () => {
+		expect(speaksUndisguised({ ...guest, revealed: true })).toBe(true)
+		expect(
+			speaksUndisguised({ ...host, phase: 'revealed', revealed: true })
+		).toBe(true)
+	})
+
+	it('waits for this client to catch up with the phase', () => {
+		// `revealed` is the local countdown having elapsed, not the room's
+		// announcement. Reading the phase instead would take the mask off
+		// early for whoever heard about it first.
+		expect(
+			speaksUndisguised({ ...guest, phase: 'revealed', revealed: false })
+		).toBe(false)
 	})
 })
