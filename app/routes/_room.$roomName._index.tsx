@@ -12,6 +12,7 @@ import { CharacterPicker } from '~/components/CharacterPicker'
 import { CopyButton } from '~/components/CopyButton'
 import { Disclaimer } from '~/components/Disclaimer'
 import { Icon } from '~/components/Icon/Icon'
+import { LobbyVoice } from '~/components/LobbyVoice'
 import { MicButton } from '~/components/MicButton'
 import { UnmaskedIdentity } from '~/components/UnmaskedIdentity'
 import { VoicePreview } from '~/components/VoicePreview'
@@ -243,6 +244,8 @@ export default function Lobby() {
 						)}
 					</div>
 				)}
+
+				<LobbyVoice />
 
 				<div className="flex flex-wrap items-center gap-4 text-sm">
 					{isHost && !meetingStarted && (

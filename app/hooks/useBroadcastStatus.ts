@@ -16,6 +16,14 @@ interface Config {
 	pushedTracks: RoomContextType['pushedTracks']
 	raisedHand: boolean
 	speaking: boolean
+	/**
+	 * Whether this is somebody taking their place in the meeting.
+	 *
+	 * False from the lobby, where the host announces their microphone without
+	 * yet being in the room: `stage.ts` seats whoever is joined, and the lobby
+	 * is not a seat.
+	 */
+	joined?: boolean
 }
 
 export default function useBroadcastStatus({
@@ -26,6 +34,7 @@ export default function useBroadcastStatus({
 	pushedTracks,
 	raisedHand,
 	speaking,
+	joined = true,
 }: Config) {
 	const {
 		audioEnabled,
@@ -50,7 +59,7 @@ export default function useBroadcastStatus({
 				id,
 				name,
 				characterId,
-				joined: true,
+				joined,
 				raisedHand,
 				speaking,
 				transceiverSessionId: sessionId,
@@ -98,6 +107,7 @@ export default function useBroadcastStatus({
 		audioUnavailableReason,
 		audioUnavailable,
 		characterId,
+		joined,
 	])
 
 	useUnmount(() => {

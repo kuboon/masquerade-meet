@@ -25,6 +25,7 @@ import useUserMedia, { mic } from '~/hooks/useUserMedia'
 import type { TrackObject } from '~/utils/callsTypes'
 import { useE2EE } from '~/utils/e2ee'
 import { getIceServers } from '~/utils/getIceServers.server'
+import { speaksUndisguised } from '~/utils/masquerade'
 import { mode } from '~/utils/mode'
 import voiceChangerTransform from '~/utils/voiceChanger'
 
@@ -253,11 +254,17 @@ function Room({ room, userMedia }: RoomProps) {
 	// ever reaches the SFU. Once the masks are off we take the transform back
 	// out entirely rather than neutralising it, which avoids leaving the pitch
 	// shifter's latency and comb artifacts on everyone's real voice.
+	//
+	// The host in the lobby is the one other exception, and the only place an
+	// unprocessed microphone leaves this browser before the reveal — see
+	// LobbyVoice for what that buys and what it costs. It goes back on the
+	// moment the phase does, which is before anybody walks into the room.
+	const undisguised = speaksUndisguised(masquerade)
 	useEffect(() => {
-		if (masquerade.revealed) return
+		if (undisguised) return
 		mic.addTransform(voiceChangerTransform)
 		return () => mic.removeTransform(voiceChangerTransform)
-	}, [masquerade.revealed])
+	}, [undisguised])
 
 	const { e2eeSafetyNumber, onJoin } = useE2EE({
 		enabled: e2eeEnabled,
