@@ -81,6 +81,15 @@ export const send = (page: Page, id: string, message: unknown) =>
 		message,
 	] as [string, unknown])
 
+/** Everything the room says about one connection, by its id. */
+export const user = (page: Page, id: string, of = id) =>
+	page.evaluate(
+		([id, of]) =>
+			(window.__room.state[id]?.users ?? []).find((u: any) => u.id === of) ??
+			null,
+		[id, of]
+	) as Promise<any>
+
 export const leave = (page: Page, id: string) =>
 	page.evaluate((id) => window.__room.leave(id), id)
 

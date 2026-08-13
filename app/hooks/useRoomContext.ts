@@ -15,6 +15,16 @@ export type RoomContextType = {
 	setJoined: Dispatch<SetStateAction<boolean>>
 	pinnedTileIds: string[]
 	setPinnedTileIds: Dispatch<SetStateAction<string[]>>
+	/**
+	 * Whether the host has asked to be heard, as themselves, while the room
+	 * waits. Off until they say so: it spends their own reveal, and it is the
+	 * only way an unprocessed microphone leaves this browser before the end.
+	 *
+	 * Lives up here because the lobby offers the switch and the room layout
+	 * owns the audio graph that answers to it.
+	 */
+	speakingInLobby: boolean
+	setSpeakingInLobby: Dispatch<SetStateAction<boolean>>
 	showDebugInfo: boolean
 	setShowDebugInfo: Dispatch<SetStateAction<boolean>>
 	audioOnlyMode: boolean

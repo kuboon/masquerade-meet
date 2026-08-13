@@ -246,6 +246,9 @@ function Room({ room, userMedia }: RoomProps) {
 		pushedScreenSharingTrack$
 	)
 	const [pinnedTileIds, setPinnedTileIds] = useState<string[]>([])
+	// Deliberately not remembered between rooms. The safe answer is the one a
+	// host should have to give again each time.
+	const [speakingInLobby, setSpeakingInLobby] = useState(false)
 	const [showDebugInfo, setShowDebugInfo] = useState(mode !== 'production')
 
 	const masquerade = useMasquerade({ room, userMedia })
@@ -259,7 +262,7 @@ function Room({ room, userMedia }: RoomProps) {
 	// unprocessed microphone leaves this browser before the reveal — see
 	// LobbyVoice for what that buys and what it costs. It goes back on the
 	// moment the phase does, which is before anybody walks into the room.
-	const undisguised = speaksUndisguised(masquerade)
+	const undisguised = speaksUndisguised({ ...masquerade, speakingInLobby })
 	useEffect(() => {
 		if (undisguised) return
 		mic.addTransform(voiceChangerTransform)
@@ -278,6 +281,8 @@ function Room({ room, userMedia }: RoomProps) {
 		masquerade,
 		pinnedTileIds,
 		setPinnedTileIds,
+		speakingInLobby,
+		setSpeakingInLobby,
 		showDebugInfo,
 		setShowDebugInfo,
 		dataSaverMode,

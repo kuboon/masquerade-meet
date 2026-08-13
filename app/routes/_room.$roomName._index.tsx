@@ -73,6 +73,12 @@ export default function Lobby() {
 		starting,
 		startingIn,
 		selectCharacter,
+		confirmCharacter,
+		confirmed,
+		confirmedCount,
+		takenByOthers,
+		lostCharacter,
+		getCharacter,
 		setDisplayName,
 		startMeeting,
 		wornVoice,
@@ -170,7 +176,7 @@ export default function Lobby() {
 					</div>
 					<div className="min-w-0">
 						<p className="text-xs text-zinc-500 dark:text-zinc-400">
-							希望するキャラクター
+							{confirmed ? 'あなたのキャラクター' : '希望するキャラクター'}
 						</p>
 						<p className="truncate text-2xl font-bold">
 							{character ? `${character.emoji} ${character.name}` : '選択中…'}
@@ -182,16 +188,59 @@ export default function Lobby() {
 				</div>
 
 				<div className="space-y-2">
-					<h2 className="text-sm font-semibold">キャラクターを選ぶ</h2>
+					<div className="flex flex-wrap items-baseline justify-between gap-2">
+						<h2 className="text-sm font-semibold">キャラクターを選ぶ</h2>
+						<p className="text-xs text-zinc-500 dark:text-zinc-400">
+							{confirmedCount}/{participants.length}人が確定済み
+						</p>
+					</div>
 					<CharacterPicker
 						characters={characterSet.characters}
 						selectedId={character?.id}
-						disabled={starting}
+						confirmedIds={takenByOthers}
+						disabled={confirmed}
 						onSelect={selectCharacter}
 					/>
-					<p className="text-xs text-zinc-500 dark:text-zinc-400">
-						誰が誰を選んでいるかは分かりません。希望が重なった場合は、ミーティング開始時に抽選で決まり、外れた人には空いているキャラクターが割り当てられます。
-					</p>
+
+					{lostCharacter && (
+						<p className="text-xs text-orange-700 dark:text-orange-400">
+							{getCharacter(lostCharacter)?.name ?? 'そのキャラクター'}
+							は、ほんの少し早く他の人が確定しました。別のキャラクターを選んでください。
+						</p>
+					)}
+
+					<div className="flex flex-wrap items-center gap-3">
+						<Button
+							displayType={confirmed ? 'secondary' : 'primary'}
+							// Nothing to press once it is settled, and nothing to
+							// win when somebody else already has it — the notice
+							// above says so, and pressing would only lose again.
+							disabled={
+								confirmed ||
+								!character ||
+								starting ||
+								takenByOthers.includes(character.id)
+							}
+							onClick={confirmCharacter}
+						>
+							{confirmed
+								? 'このキャラクターで確定済み'
+								: 'このキャラクターに決める'}
+						</Button>
+						<p className="text-xs text-zinc-500 dark:text-zinc-400">
+							{confirmed
+								? '声を調整しても、もうキャラクターは変わりません。'
+								: '決めるまでは、同じキャラクターを他の人と同時に選べます。先に決めた人のものになります。'}
+						</p>
+					</div>
+
+					{/* Nothing left to warn about once they have taken one: the
+					    draw only reaches people who never decided. */}
+					{!confirmed && (
+						<p className="text-xs text-zinc-500 dark:text-zinc-400">
+							決めないままミーティングが始まった場合は、空いているキャラクターの中から抽選で決まります。
+						</p>
+					)}
 					<p className="text-xs text-zinc-500 dark:text-zinc-400">
 						ミーティング中は声がこのキャラクターの声色に変わり、カメラ映像の代わりにキャラクターが表示されます。
 						本名はルーム管理者が解除するまで誰にも見えません。

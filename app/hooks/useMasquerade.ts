@@ -24,7 +24,7 @@ export default function useMasquerade({
 	room: ReturnType<typeof useRoom>
 	userMedia: UserMedia
 }) {
-	const { roomState, identity, send } = room
+	const { roomState, identity, send, lostCharacter, clearLostCharacter } = room
 	const { phase, hostId, revealAt, serverNow, characterSetId, seats, startAt } =
 		roomState.masquerade
 
@@ -167,9 +167,40 @@ export default function useMasquerade({
 		/** the meeting is under way — the lobby should hand over to the room */
 		meetingStarted: phase !== 'lobby',
 		selectCharacter: useCallback(
-			(characterId: string) => send({ type: 'selectCharacter', characterId }),
+			(characterId: string) => {
+				clearLostCharacter()
+				send({ type: 'selectCharacter', characterId })
+			},
+			[send, clearLostCharacter]
+		),
+		/** take the wish, if nobody has taken it first */
+		confirmCharacter: useCallback(
+			() => send({ type: 'confirmCharacter' }),
 			[send]
 		),
+		/** true once this character is theirs and cannot be changed */
+		confirmed: Boolean(identity?.characterConfirmed),
+		/**
+		 * The characters somebody else has taken, and nobody may pick now.
+		 * Their own is left out: a settled choice is not out of reach.
+		 *
+		 * Derived rather than sent as a list of its own — the room already
+		 * says who holds what.
+		 */
+		takenByOthers: useMemo(
+			() =>
+				participants
+					.filter(
+						(u) =>
+							u.id !== identity?.id && u.characterConfirmed && u.characterId
+					)
+					.map((u) => u.characterId!),
+			[participants, identity?.id]
+		),
+		/** how many of the people waiting have settled on a face */
+		confirmedCount: participants.filter((u) => u.characterConfirmed).length,
+		/** the one they reached for a moment too late, until they pick again */
+		lostCharacter,
 		setDisplayName: useCallback(
 			(name: string) => send({ type: 'setDisplayName', name }),
 			[send]

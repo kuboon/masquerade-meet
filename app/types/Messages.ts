@@ -18,6 +18,19 @@ export type User = {
 	 */
 	name: string
 	characterId?: string
+	/**
+	 * Whether `characterId` is settled rather than merely wished for.
+	 *
+	 * In the lobby a character starts out as a wish that anybody may share.
+	 * Confirming takes it: from then on nobody else may pick it, and the
+	 * person who took it cannot change their mind. Everyone is confirmed once
+	 * the meeting begins, because the draw settles whatever is left.
+	 *
+	 * It is broadcast because the picker has to grey out what is gone, and it
+	 * gives nothing away that `characterId` does not already: in the lobby
+	 * nobody has a name to attach a character to.
+	 */
+	characterConfirmed?: boolean
 	transceiverSessionId?: string
 	raisedHand: boolean
 	speaking: boolean
@@ -132,6 +145,16 @@ export type ServerMessage =
 			id: string
 	  }
 	| {
+			/**
+			 * Somebody else took that character first. Sent only to whoever
+			 * lost the race — everybody learns the character is gone from the
+			 * room state, but only the loser needs telling why their button
+			 * did nothing.
+			 */
+			type: 'characterUnavailable'
+			characterId: string
+	  }
+	| {
 			type: 'chatMessage'
 			/** unique per room, so the log can be keyed and de-duplicated */
 			id: string
@@ -179,6 +202,10 @@ export type ClientMessage =
 	| {
 			type: 'selectCharacter'
 			characterId: string
+	  }
+	| {
+			/** take the selected character, if nobody has taken it first */
+			type: 'confirmCharacter'
 	  }
 	| {
 			type: 'startMeeting'
