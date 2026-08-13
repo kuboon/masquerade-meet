@@ -134,9 +134,7 @@ test('says so when the sliders leave you sounding like yourself', async ({
 	await expect(warning).toHaveCount(0)
 })
 
-test('tells the host their lobby voice is their own, and only the host', async ({
-	browser,
-}) => {
+test('keeps the host quiet until they ask to be heard', async ({ browser }) => {
 	const name = room()
 
 	// Whoever arrives first runs the room, so this page is the host.
@@ -144,20 +142,24 @@ test('tells the host their lobby voice is their own, and only the host', async (
 	await host.goto(`/${name}`)
 	await pastPermissions(host)
 
-	const speaking = host.getByText('待っている人には、あなたの声がそのまま')
-	const muted = host.getByText('マイクをオンにすると、待っている人に声を')
+	const invitation = host.getByText(
+		'オンにすると、変換なしの地声で全員に話せます'
+	)
+	const live = host.getByText('あなたの声がそのまま全員に聞こえています')
 
-	// Which one is showing depends on whether the microphone starts
-	// broadcasting, which differs between the dev server and the built
-	// worker. Both branches are worth seeing, so drive it rather than
-	// assuming.
-	await expect(speaking.or(muted)).toBeVisible({ timeout: 20_000 })
-	const wasSpeaking = await speaking.isVisible()
-	await host
-		.getByRole('button', { name: wasSpeaking ? 'Turn mic off' : 'Turn mic on' })
-		.click()
-	await expect(wasSpeaking ? muted : speaking).toBeVisible()
-	await expect(wasSpeaking ? speaking : muted).toHaveCount(0)
+	// Off to begin with, whatever the microphone itself is doing: this is the
+	// one place an unprocessed voice leaves the browser, and it costs the
+	// host their own reveal.
+	const speak = host.getByLabel('待っている人に声をかける')
+	await expect(speak).toBeVisible({ timeout: 20_000 })
+	await expect(speak).not.toBeChecked()
+	await expect(invitation).toBeVisible()
+	await expect(live).toHaveCount(0)
+
+	await speak.click()
+	await expect(speak).toBeChecked()
+	await expect(live).toBeVisible()
+	await expect(invitation).toHaveCount(0)
 
 	// Nobody else is offered it. A guest's microphone reaches no one in the
 	// lobby, disguised or not, so there is nothing to tell them about.
@@ -165,13 +167,53 @@ test('tells the host their lobby voice is their own, and only the host', async (
 	await guest.goto(`/${name}`)
 	await pastPermissions(guest)
 	await expect(guest.getByText('2人が待機中')).toBeVisible({ timeout: 20_000 })
+	await expect(guest.getByLabel('待っている人に声をかける')).toHaveCount(0)
 	await expect(
-		guest.getByText('待っている人には、あなたの声がそのまま')
+		guest.getByText('あなたの声がそのまま全員に聞こえています')
 	).toHaveCount(0)
+})
+
+test('hands a contested character to whoever took it first', async ({
+	browser,
+}) => {
+	const name = room()
+
+	// The rival is a socket: two browsers cannot be made to click together,
+	// and the race itself is covered in character-lock.spec.ts. What matters
+	// here is what the lobby shows once somebody else has won.
+	const backstage = await browser.newPage()
+	await installRoomSocket(backstage)
+	await backstage.goto('/')
+	await open(backstage, name, 'rival')
+	await send(backstage, 'rival', {
+		type: 'selectCharacter',
+		characterId: 'bear',
+	})
+	await send(backstage, 'rival', { type: 'confirmCharacter' })
+
+	const page = await browser.newPage()
+	await page.goto(`/${name}`)
+	await pastPermissions(page)
+	await expect(page.getByText('2人が待機中')).toBeVisible({ timeout: 20_000 })
+
+	// Taken, and shown to be, before anybody wastes a click on it.
+	await expect(page.getByText('1/2人が確定済み')).toBeVisible()
+	const bear = page.getByRole('button', { name: 'くまごろう' })
+	await expect(bear).toBeDisabled()
+
+	// Anything else is still free, and free to be shared until it is taken.
+	const confirm = page.getByRole('button', { name: 'このキャラクターに決める' })
+	await page.getByRole('button', { name: 'うさぴょん' }).click()
+	await expect(confirm).toBeEnabled()
+	await confirm.click()
+
 	await expect(
-		guest.getByText('マイクをオンにすると、待っている人に声を')
-	).toHaveCount(0)
-	// And with no Realtime session here there is no track to pull, so the
-	// listening side stays quiet rather than claiming somebody is talking.
-	await expect(guest.getByText('ルーム管理者が話しています')).toHaveCount(0)
+		page.getByRole('button', { name: 'このキャラクターで確定済み' })
+	).toBeDisabled()
+	await expect(page.getByText('2/2人が確定済み')).toBeVisible()
+	// And it stays theirs: the picker is closed rather than merely marked.
+	await expect(page.getByRole('button', { name: 'こんきち' })).toBeDisabled()
+	await expect(
+		page.getByText('声を調整しても、もうキャラクターは変わりません')
+	).toBeVisible()
 })

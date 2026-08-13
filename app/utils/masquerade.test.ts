@@ -110,6 +110,15 @@ describe('restartParticipant', () => {
 		})
 	})
 
+	it('lets go of the character they had taken', () => {
+		// The next round deals fresh faces, so a claim from the last one would
+		// keep a character out of the draw for nobody's benefit.
+		expect(
+			restartParticipant({ ...veteran, characterConfirmed: true })
+				.characterConfirmed
+		).toBe(false)
+	})
+
 	it('keeps who they are', () => {
 		// Losing the name would make the lobby demand one again from people who
 		// are already sitting in it, and leave them behind at the next start if
@@ -171,6 +180,70 @@ describe('assignCharacters', () => {
 		for (const value of assigned.values()) expect(ids).toContain(value)
 	})
 
+	it('leaves a confirmed character where it is', () => {
+		// Confirming is the promise the lobby makes: nothing after it can take
+		// the face away, least of all the draw.
+		const assigned = assignCharacters(
+			[
+				{ id: 'a', characterId: 'bear', characterConfirmed: true },
+				{ id: 'b', characterId: 'fox' },
+			],
+			ids,
+			first
+		)
+		expect(assigned.get('a')).toBe('bear')
+	})
+
+	it('will not deal a confirmed character to anybody else', () => {
+		// Somebody still wishing for it has already lost; they get something
+		// else rather than a second copy of a face that is spoken for.
+		const assigned = assignCharacters(
+			[
+				{ id: 'a', characterId: 'bear', characterConfirmed: true },
+				{ id: 'b', characterId: 'bear' },
+				{ id: 'c', characterId: 'bear' },
+			],
+			ids,
+			first
+		)
+		expect(assigned.get('a')).toBe('bear')
+		expect(assigned.get('b')).not.toBe('bear')
+		expect(assigned.get('c')).not.toBe('bear')
+		expect(new Set(assigned.values()).size).toBe(3)
+	})
+
+	it('does not let the shuffle reach somebody who has confirmed', () => {
+		// With every character confirmed there is nothing to draw for, so the
+		// source of randomness should never be consulted at all.
+		let consulted = 0
+		const assigned = assignCharacters(
+			[
+				{ id: 'a', characterId: 'bear', characterConfirmed: true },
+				{ id: 'b', characterId: 'fox', characterConfirmed: true },
+			],
+			ids,
+			() => {
+				consulted++
+				return 0
+			}
+		)
+		expect(consulted).toBe(0)
+		expect(assigned.get('a')).toBe('bear')
+		expect(assigned.get('b')).toBe('fox')
+	})
+
+	it('ignores a confirmation with no character behind it', () => {
+		// Storage from before confirming existed, or a client sending
+		// nonsense. Either way they go back in the draw rather than being
+		// dealt undefined.
+		const assigned = assignCharacters(
+			[{ id: 'a', characterConfirmed: true }],
+			ids,
+			first
+		)
+		expect(ids).toContain(assigned.get('a'))
+	})
+
 	it('never hands the same character to two people', () => {
 		// Everybody wants the bear; the room has four faces and four people.
 		const assigned = assignCharacters(
@@ -209,13 +282,31 @@ describe('assignCharacters', () => {
 })
 
 describe('speaksUndisguised', () => {
-	const guest = { phase: 'lobby' as const, revealed: false, isHost: false }
-	const host = { ...guest, isHost: true }
+	const guest = {
+		phase: 'lobby' as const,
+		revealed: false,
+		isHost: false,
+		speakingInLobby: false,
+	}
+	const host = { ...guest, isHost: true, speakingInLobby: true }
 
 	it('lets the host be heard while the room is still waiting', () => {
 		// Somebody has to be able to say what is about to happen, and a mask
 		// is in the way of that.
 		expect(speaksUndisguised(host)).toBe(true)
+	})
+
+	it('waits for the host to ask', () => {
+		// The default has to be silence: this is the one place an unprocessed
+		// microphone leaves the browser, and it spends the host's own reveal.
+		// Nobody should find they have paid that without choosing to.
+		expect(speaksUndisguised({ ...host, speakingInLobby: false })).toBe(false)
+	})
+
+	it('does not let anybody else ask', () => {
+		// The switch is only offered to the host, but the rule is what makes
+		// that true rather than a matter of which component got rendered.
+		expect(speaksUndisguised({ ...guest, speakingInLobby: true })).toBe(false)
 	})
 
 	it('keeps everybody else disguised in the lobby', () => {
@@ -233,6 +324,7 @@ describe('speaksUndisguised', () => {
 	})
 
 	it("drops everyone's disguise at the reveal", () => {
+		// Regardless of the switch, which by then is about a room nobody is in.
 		expect(speaksUndisguised({ ...guest, revealed: true })).toBe(true)
 		expect(
 			speaksUndisguised({ ...host, phase: 'revealed', revealed: true })

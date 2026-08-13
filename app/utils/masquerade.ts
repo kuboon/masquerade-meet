@@ -97,7 +97,16 @@ export function nextHost<T extends { joinedAt?: number }>(
 export function restartParticipant<
 	T extends { joined: boolean; raisedHand: boolean; speaking: boolean },
 >(user: T): T {
-	return { ...user, joined: false, raisedHand: false, speaking: false }
+	return {
+		...user,
+		joined: false,
+		raisedHand: false,
+		speaking: false,
+		// A new round is a new draw, so nothing is taken yet. The caller deals
+		// fresh characters; this only makes sure nobody is still holding a
+		// claim on one from last time.
+		characterConfirmed: false,
+	}
 }
 
 /**
@@ -106,7 +115,8 @@ export function restartParticipant<
  * Two cases, and no others. After the reveal there is nothing left to hide.
  * And the host while the room is still in the lobby, so that whoever is
  * running it can tell everyone what is about to happen — at the price of
- * their own reveal, which is theirs to pay and nobody else's.
+ * their own reveal, which is theirs to pay and nobody else's, and which is
+ * why they have to ask for it rather than find they have already spent it.
  *
  * Everything else is disguised, the host included from the moment the phase
  * leaves the lobby. That happens when the start deadline falls, which is
@@ -119,13 +129,16 @@ export function speaksUndisguised({
 	phase,
 	revealed,
 	isHost,
+	speakingInLobby,
 }: {
 	phase: RoomPhase
 	/** true once this client has actually dropped its disguise */
 	revealed: boolean
 	isHost: boolean
+	/** the host has asked to be heard as themselves while waiting */
+	speakingInLobby: boolean
 }): boolean {
-	return revealed || (isHost && phase === 'lobby')
+	return revealed || (isHost && phase === 'lobby' && speakingInLobby)
 }
 
 /**
@@ -147,26 +160,41 @@ export function shuffled<T>(
 /**
  * Turns everyone's preferred character into an assignment nobody shares.
  *
- * People pick freely in the lobby — being told "already taken" while
- * waiting is a poor welcome, and it hands an advantage to whoever clicked
- * first. Instead the clash is settled here, once, when the meeting starts:
- * the order is shuffled, first come first served within that order, and
- * anyone who loses their pick gets one of the characters still going.
+ * Anybody who confirmed keeps what they took — that is what confirming is
+ * for, and by the time this runs their character is already nobody else's
+ * to want. Everyone else is still holding a wish, and wishes may clash: the
+ * order is shuffled, first come first served within that order, and whoever
+ * loses gets one of the characters still going. Shuffling matters because
+ * insertion order is "whoever connected first", and that should not decide
+ * who gets the face they wanted.
  *
  * `random` is injectable so the outcome can be tested; it is `Math.random`
  * in the Durable Object.
  */
 export function assignCharacters(
-	participants: { id: string; characterId?: string }[],
+	participants: {
+		id: string
+		characterId?: string
+		characterConfirmed?: boolean
+	}[],
 	characterIds: string[],
 	random: () => number = Math.random
 ): Map<string, string> {
-	// Without the shuffle the insertion order would decide every clash, which
-	// is "whoever connected first" wearing a disguise.
-	const order = shuffled(participants, random)
-
 	const remaining = new Set(characterIds)
 	const assigned = new Map<string, string>()
+
+	// Settled first, and out of the pool before anybody draws from it.
+	const undecided: typeof participants = []
+	for (const participant of participants) {
+		if (participant.characterConfirmed && participant.characterId) {
+			remaining.delete(participant.characterId)
+			assigned.set(participant.id, participant.characterId)
+		} else {
+			undecided.push(participant)
+		}
+	}
+
+	const order = shuffled(undecided, random)
 	const unlucky: typeof order = []
 
 	for (const participant of order) {

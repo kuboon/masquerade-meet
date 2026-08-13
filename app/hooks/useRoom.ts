@@ -83,6 +83,11 @@ export default function useRoom({
 		}
 	}, [roomName, characterSetId])
 
+	// The character somebody reached for a moment too late, until they pick
+	// another. Kept here rather than in the room state because it happened to
+	// one person, not to the room.
+	const [lostCharacter, setLostCharacter] = useState<string>()
+
 	const websocket = usePartySocket({
 		id: connectionId,
 		party: 'rooms',
@@ -115,6 +120,11 @@ export default function useRoom({
 					break
 				case 'muteMic':
 					userMedia.turnMicOff()
+					break
+				case 'characterUnavailable':
+					// Only the loser of a race hears this, and only they need to:
+					// everybody else watches the character go in the room state.
+					setLostCharacter(message.characterId)
 					break
 				case 'partyserver-pong':
 				case 'e2eeMlsMessage':
@@ -182,5 +192,7 @@ export default function useRoom({
 		websocket,
 		roomState,
 		send,
+		lostCharacter,
+		clearLostCharacter: useCallback(() => setLostCharacter(undefined), []),
 	}
 }

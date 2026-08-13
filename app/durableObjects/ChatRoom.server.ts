@@ -140,6 +140,7 @@ export class ChatRoom extends Server<Env> {
 					characterSet,
 					new URL(ctx.request.url).searchParams.get('want')
 				),
+				characterConfirmed: false,
 				joined: false,
 				raisedHand: false,
 				speaking: false,
@@ -328,6 +329,9 @@ export class ChatRoom extends Server<Env> {
 			await this.ctx.storage.put(`session-${user.id}`, {
 				...user,
 				characterId: assigned.get(user.id) ?? user.characterId,
+				// Whatever anybody was still only wishing for is theirs now: the
+				// draw is the last word, and there is nothing left to change.
+				characterConfirmed: true,
 			} satisfies StoredUser)
 		}
 
@@ -405,7 +409,25 @@ export class ChatRoom extends Server<Env> {
 		return now
 	}
 
-	/** Characters already spoken for, so nobody ends up with a twin. */
+	/**
+	 * The characters nobody else may pick, because somebody took them.
+	 *
+	 * Distinct from `getTakenCharacterIds`, which counts wishes too: in the
+	 * lobby several people may want the same face, and only confirming makes
+	 * it theirs.
+	 */
+	async getConfirmedCharacterIds(excludeConnectionId?: string) {
+		const confirmed = new Set<string>()
+		for (const [key, user] of await this.getUsers()) {
+			if (key === `session-${excludeConnectionId}`) continue
+			if (user.characterConfirmed && user.characterId) {
+				confirmed.add(user.characterId)
+			}
+		}
+		return confirmed
+	}
+
+	/** Every character spoken for, wished for or taken. */
 	async getTakenCharacterIds(excludeConnectionId?: string) {
 		const taken = new Set<string>()
 		for (const [key, user] of await this.getUsers()) {
@@ -634,6 +656,7 @@ export class ChatRoom extends Server<Env> {
 								...stored,
 								realName: name,
 								characterId: free,
+								characterConfirmed: true,
 							} satisfies StoredUser)
 						}
 						await this.takeSeat(connection.id)
@@ -652,18 +675,54 @@ export class ChatRoom extends Server<Env> {
 					const character = getCharacter(characterSet, data.characterId)
 					if (!character) break
 
-					// In the lobby a character is a wish, not a claim, and clashes
-					// are drawn for when the meeting starts. Once a meeting is
-					// running the draw has already happened, so a wish would put
-					// two people behind one face.
+					// Their own answer is already final: confirming is a one-way
+					// door, which is what lets them tune a voice to the face.
+					if (stored.characterConfirmed) break
+
+					// In the lobby a character is a wish until somebody confirms
+					// it, and several people may wish for the same one — clashes
+					// are drawn for when the meeting starts. What has been
+					// confirmed is gone, though, and so is everything once a
+					// meeting is running and the draw has already happened.
 					const { phase } = await this.getMasqueradeState()
-					if (phase !== 'lobby') {
-						const taken = await this.getTakenCharacterIds(connection.id)
-						if (taken.has(character.id)) break
-					}
+					const unavailable =
+						phase === 'lobby'
+							? await this.getConfirmedCharacterIds(connection.id)
+							: await this.getTakenCharacterIds(connection.id)
+					if (unavailable.has(character.id)) break
+
 					await this.ctx.storage.put(`session-${connection.id}`, {
 						...stored,
 						characterId: character.id,
+					} satisfies StoredUser)
+					await this.broadcastRoomState()
+					break
+				}
+				case 'confirmCharacter': {
+					const stored = await this.ctx.storage.get<StoredUser>(
+						`session-${connection.id}`
+					)
+					if (!stored?.characterId) break
+					if (stored.characterConfirmed) break
+
+					// The whole race is decided here, and it is safe because a
+					// Durable Object does not deliver another message while this
+					// one is waiting on storage: whoever's confirm is read first
+					// has already been written by the time the next one looks.
+					const confirmed = await this.getConfirmedCharacterIds(connection.id)
+					if (confirmed.has(stored.characterId)) {
+						connection.send(
+							JSON.stringify({
+								type: 'characterUnavailable',
+								characterId: stored.characterId,
+							} satisfies ServerMessage)
+						)
+						break
+					}
+
+					await this.ctx.storage.put(`session-${connection.id}`, {
+						...stored,
+						characterConfirmed: true,
 					} satisfies StoredUser)
 					await this.broadcastRoomState()
 					break

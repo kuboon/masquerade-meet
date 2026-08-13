@@ -1,7 +1,9 @@
 import useBroadcastStatus from '~/hooks/useBroadcastStatus'
 import { useRoomContext } from '~/hooks/useRoomContext'
 import { AudioIndicator } from './AudioIndicator'
+import { Label } from './Label'
 import { PullAudioTracks, usePulledAudioTrack } from './PullAudioTracks'
+import { Toggle } from './Toggle'
 
 /**
  * The one voice the lobby carries: the host's, and undisguised.
@@ -27,11 +29,47 @@ export function LobbyVoice() {
 }
 
 /**
- * Says where to find the host's audio, and warns them it is going out.
+ * The switch that opens the host's microphone, and the reason to think first.
  *
- * `joined` is false: they are announcing a microphone, not taking a seat.
+ * Off until they turn it on. Everything about this costs the host their own
+ * reveal and sends an unprocessed microphone to the server, so it is not
+ * something to discover after the fact — and it is why the switch controls
+ * both halves at once. While it is off nothing is announced, so nobody could
+ * pull the audio even knowing where to look.
  */
 function HostVoice() {
+	const { speakingInLobby, setSpeakingInLobby } = useRoomContext()
+
+	return (
+		<div className="space-y-2">
+			<div className="flex items-center gap-2">
+				<Toggle
+					id="speak-in-lobby"
+					checked={speakingInLobby}
+					onCheckedChange={(checked) => setSpeakingInLobby(checked === true)}
+				/>
+				<Label htmlFor="speak-in-lobby" className="text-sm">
+					待っている人に声をかける
+				</Label>
+			</div>
+			<p className="text-xs text-zinc-500 dark:text-zinc-400">
+				{speakingInLobby
+					? 'あなたの声がそのまま全員に聞こえています。声で正体が分かってしまうことに注意してください。ミーティングが始まるとキャラクターの声に変わります。'
+					: 'オンにすると、変換なしの地声で全員に話せます。段取りを伝えるためのもので、そのぶん自分の正体は先に明かすことになります。'}
+			</p>
+			{speakingInLobby && <HostMicrophone />}
+		</div>
+	)
+}
+
+/**
+ * Says where to find the host's audio.
+ *
+ * `joined` is false: they are announcing a microphone, not taking a seat.
+ * Unmounting takes the announcement back, which is what turning the switch
+ * off has to do.
+ */
+function HostMicrophone() {
 	const { userMedia, partyTracks, pushedTracks, room } = useRoomContext()
 	useBroadcastStatus({
 		userMedia,
@@ -44,11 +82,10 @@ function HostVoice() {
 		joined: false,
 	})
 
+	if (userMedia.audioEnabled) return null
 	return (
-		<p className="text-xs text-zinc-500 dark:text-zinc-400">
-			{userMedia.audioEnabled
-				? '待っている人には、あなたの声がそのまま聞こえています。ミーティングが始まるとキャラクターの声に変わります。'
-				: 'マイクをオンにすると、待っている人に声を届けられます。ロビーでは変換されず、地声のまま届きます。'}
+		<p className="text-xs text-orange-700 dark:text-orange-400">
+			マイクがオフです。オンにしないと声は届きません。
 		</p>
 	)
 }
