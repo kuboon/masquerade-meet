@@ -88,6 +88,14 @@ export default function useRoom({
 	// one person, not to the room.
 	const [lostCharacter, setLostCharacter] = useState<string>()
 
+	// The role card this browser is holding, and — if this browser is the
+	// game master's — everybody's. Addressed to this connection alone, which
+	// is why it arrives on its own rather than as part of the room state.
+	const [roleCard, setRoleCard] = useState<{
+		role?: string
+		deal?: Record<string, string>
+	}>({})
+
 	const websocket = usePartySocket({
 		id: connectionId,
 		party: 'rooms',
@@ -125,6 +133,12 @@ export default function useRoom({
 					// Only the loser of a race hears this, and only they need to:
 					// everybody else watches the character go in the room state.
 					setLostCharacter(message.characterId)
+					break
+				case 'roleCard':
+					// Replaced wholesale rather than merged: an empty hand after a
+					// restart arrives as a message with nothing in it, and merging
+					// would leave the old card sitting there.
+					setRoleCard({ role: message.role, deal: message.deal })
 					break
 				case 'partyserver-pong':
 				case 'e2eeMlsMessage':
@@ -194,5 +208,9 @@ export default function useRoom({
 		send,
 		lostCharacter,
 		clearLostCharacter: useCallback(() => setLostCharacter(undefined), []),
+		/** the card this connection is holding, if the room has dealt any */
+		myRole: roleCard.role,
+		/** every card in play, sent to the game master and to nobody else */
+		roleDeal: roleCard.deal,
 	}
 }

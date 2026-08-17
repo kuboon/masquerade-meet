@@ -14,6 +14,7 @@ const harness = `
 window.__room = {
 	sockets: {},
 	state: {},
+	cards: {},
 	open(room, id) {
 		return new Promise((resolve, reject) => {
 			const ws = new WebSocket(
@@ -22,6 +23,9 @@ window.__room = {
 			ws.onmessage = (event) => {
 				const message = JSON.parse(event.data)
 				if (message.type === 'roomState') window.__room.state[id] = message.state
+				// Addressed to this connection alone, so it is kept per socket
+				// rather than anywhere a test could read it from the wrong one.
+				if (message.type === 'roleCard') window.__room.cards[id] = message
 			}
 			ws.onopen = () => {
 				window.__room.sockets[id] = ws
@@ -45,6 +49,7 @@ window.__room = {
 		ws.close()
 		delete window.__room.sockets[id]
 		delete window.__room.state[id]
+		delete window.__room.cards[id]
 	},
 }
 `
@@ -90,6 +95,13 @@ export const user = (page: Page, id: string, of = id) =>
 		[id, of]
 	) as Promise<any>
 
+/** The card the room dealt this connection, and nobody else's. */
+export const card = (page: Page, id: string) =>
+	page.evaluate((id) => window.__room.cards[id] ?? null, id) as Promise<{
+		role?: string
+		deal?: Record<string, string>
+	} | null>
+
 export const leave = (page: Page, id: string) =>
 	page.evaluate((id) => window.__room.leave(id), id)
 
@@ -127,6 +139,7 @@ declare global {
 			send(id: string, message: unknown): void
 			leave(id: string): void
 			state: Record<string, any>
+			cards: Record<string, any>
 		}
 	}
 }

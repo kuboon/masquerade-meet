@@ -24,11 +24,29 @@ export default function useMasquerade({
 	room: ReturnType<typeof useRoom>
 	userMedia: UserMedia
 }) {
-	const { roomState, identity, send, lostCharacter, clearLostCharacter } = room
-	const { phase, hostId, revealAt, serverNow, characterSetId, seats, startAt } =
-		roomState.masquerade
+	const {
+		roomState,
+		identity,
+		send,
+		lostCharacter,
+		clearLostCharacter,
+		myRole,
+		roleDeal,
+	} = room
+	const {
+		phase,
+		hostId,
+		revealAt,
+		serverNow,
+		characterSetId,
+		seats,
+		startAt,
+		roleDeck,
+		gameMasterId,
+	} = roomState.masquerade
 
 	const isHost = Boolean(identity && hostId === identity.id)
+	const isGameMaster = Boolean(identity && gameMasterId === identity.id)
 	const characterSet = getCharacterSet(characterSetId)
 	const character = getCharacter(characterSet, identity?.characterId)
 
@@ -142,6 +160,13 @@ export default function useMasquerade({
 		starting: startAt !== undefined,
 		isHost,
 		hostId,
+		/** the cards in play, in the order the host typed them */
+		roleDeck: useMemo(() => roleDeck ?? [], [roleDeck]),
+		gameMasterId,
+		/** this client is dealing rather than playing: no card, no disguise */
+		isGameMaster,
+		/** the card this client is holding, once the room has dealt */
+		myRole,
 		character,
 		/** the roster this room is hiding behind */
 		characterSet,
@@ -205,7 +230,33 @@ export default function useMasquerade({
 			(name: string) => send({ type: 'setDisplayName', name }),
 			[send]
 		),
-		startMeeting: useCallback(() => send({ type: 'startMeeting' }), [send]),
+		/**
+		 * Somebody's card, if this client is allowed to know it.
+		 *
+		 * After the reveal that is everybody's, from the room state. Before it,
+		 * only the game master knows anything, and only from the deal they were
+		 * sent — the room never puts a card in the shared state early.
+		 */
+		roleOf: useCallback(
+			(userId: string) =>
+				revealed
+					? participants.find((u) => u.id === userId)?.role
+					: roleDeal?.[userId],
+			[revealed, participants, roleDeal]
+		),
+		setRoleDeck: useCallback(
+			(text: string) => send({ type: 'setRoleDeck', text }),
+			[send]
+		),
+		setGameMaster: useCallback(
+			(isGameMaster: boolean) => send({ type: 'setGameMaster', isGameMaster }),
+			[send]
+		),
+		startMeeting: useCallback(
+			(rolePlan?: Record<string, string>) =>
+				send({ type: 'startMeeting', rolePlan }),
+			[send]
+		),
 		startReveal: useCallback(() => send({ type: 'startReveal' }), [send]),
 		restartMeeting: useCallback(() => send({ type: 'restartMeeting' }), [send]),
 		/** the voice going out: theirs if they tuned one, else the character's */

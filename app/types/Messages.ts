@@ -31,6 +31,21 @@ export type User = {
 	 * nobody has a name to attach a character to.
 	 */
 	characterConfirmed?: boolean
+	/**
+	 * The role card they are holding — 人狼, 占い師, whatever the host typed.
+	 *
+	 * Absent from the broadcast until the reveal, and then present for
+	 * everybody, exactly like the real name. Before that a participant learns
+	 * their own card from a `roleCard` message addressed to them alone, so the
+	 * shared room state never contains anybody's card at all: there is nothing
+	 * to strip and nothing to find in devtools.
+	 *
+	 * The Durable Object keeps cards under their own storage keys rather than
+	 * in the participant record, so this field is only ever filled in on the
+	 * way out. A card has to outlive the seat — a reload deletes the record —
+	 * and it must not be somewhere a spread can pick it up by accident.
+	 */
+	role?: string
 	transceiverSessionId?: string
 	raisedHand: boolean
 	speaking: boolean
@@ -94,6 +109,21 @@ export type MasqueradeState = {
 	 */
 	seats?: string[]
 	/**
+	 * The role cards this room is playing with, in the order the host typed
+	 * them. Public: which cards are in the game is what everybody has to
+	 * agree on, and only who holds them is a secret.
+	 *
+	 * Empty when the host never set any up, which is every room that is not
+	 * playing a game — the whole feature is invisible then.
+	 */
+	roleDeck?: string[]
+	/**
+	 * Whoever is running the game rather than playing it: no card, and no
+	 * disguise on their voice, because a narrator nobody can understand is no
+	 * use. Only the host can be this, and only by saying so.
+	 */
+	gameMasterId?: string
+	/**
 	 * When the meeting begins, on the Durable Object's clock — set the moment
 	 * the host says go, cleared when it fires. Compare against `serverNow`
 	 * from the same message rather than against `Date.now()`.
@@ -155,6 +185,25 @@ export type ServerMessage =
 			characterId: string
 	  }
 	| {
+			/**
+			 * What this connection is holding, sent to that connection alone.
+			 *
+			 * A whole message of its own rather than a field on the room state,
+			 * because the room state is one string broadcast to everybody: a
+			 * card that lives in it is a card that has already left the room.
+			 *
+			 * Absent `role` means no card — the game master, a latecomer who
+			 * missed the deal, or a room playing no game at all.
+			 */
+			type: 'roleCard'
+			role?: string
+			/**
+			 * The whole deal, by connection id. Sent only to the game master,
+			 * who dealt it and has to run the game from it.
+			 */
+			deal?: Record<string, string>
+	  }
+	| {
 			type: 'chatMessage'
 			/** unique per room, so the log can be keyed and de-duplicated */
 			id: string
@@ -208,7 +257,27 @@ export type ClientMessage =
 			type: 'confirmCharacter'
 	  }
 	| {
+			/** host only, lobby only — the deck as typed, spaces and all */
+			type: 'setRoleDeck'
+			text: string
+	  }
+	| {
+			/** host only, lobby only — whether they are dealing instead of playing */
+			type: 'setGameMaster'
+			isGameMaster: boolean
+	  }
+	| {
 			type: 'startMeeting'
+			/**
+			 * The game master's answer to "who gets what", by connection id, for
+			 * the players they bothered to decide about. It travels with the
+			 * start rather than being set up in advance so that what the game
+			 * master is looking at when they press the button is what the room
+			 * will deal — and so that it is never anywhere the room can
+			 * broadcast it from. Ignored from anybody who is not the game
+			 * master.
+			 */
+			rolePlan?: Record<string, string>
 	  }
 	| {
 			type: 'startReveal'

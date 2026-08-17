@@ -142,6 +142,12 @@ export const Participant = forwardRef<
 	const character = masquerade.getCharacter(user.characterId)
 	const maskedCharacter = masquerade.revealed ? undefined : character
 
+	// Everybody's card at the reveal, and the game master's private copy
+	// before it — `roleOf` is the one place that decides which, so a tile can
+	// simply draw whatever it is handed.
+	const role = masquerade.roleOf(user.id)
+	const isGameMaster = user.id === masquerade.gameMasterId
+
 	return (
 		<div
 			className="grow shrink text-base basis-[calc(var(--flex-container-width)_-_var(--gap)_*_3)]"
@@ -308,6 +314,18 @@ export const Participant = forwardRef<
 							</Tooltip>
 						)}
 					</div>
+					{!isScreenShare && (role || isGameMaster) && (
+						<div
+							className={cn(
+								'absolute bottom-3 rounded bg-zinc-900/70 px-2 py-0.5 text-xs',
+								// Out of the way of the character badge, which is
+								// only there once the masks are off.
+								masquerade.revealed && character ? 'right-14' : 'right-2'
+							)}
+						>
+							{isGameMaster ? 'ゲームマスター' : role}
+						</div>
+					)}
 					{masquerade.revealed && !isScreenShare && character && (
 						<Tooltip content={`${character.name}でした`}>
 							<div className="absolute bottom-2 right-2 h-10 w-10 overflow-hidden rounded-md bg-zinc-900/40 ring-1 ring-white/40">
