@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs } from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
 import { useNavigate, useParams, useSearchParams } from '@remix-run/react'
 import { useObservableAsValue } from 'partytracks/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocalStorage } from 'react-use'
 import { AudioIndicator } from '~/components/AudioIndicator'
 import { Button } from '~/components/Button'
@@ -14,6 +14,7 @@ import { Disclaimer } from '~/components/Disclaimer'
 import { Icon } from '~/components/Icon/Icon'
 import { LobbyVoice } from '~/components/LobbyVoice'
 import { MicButton } from '~/components/MicButton'
+import { RoleDeck } from '~/components/RoleDeck'
 import { UnmaskedIdentity } from '~/components/UnmaskedIdentity'
 import { VoicePreview } from '~/components/VoicePreview'
 
@@ -77,6 +78,7 @@ export default function Lobby() {
 		confirmed,
 		confirmedCount,
 		takenByOthers,
+		isGameMaster,
 		lostCharacter,
 		getCharacter,
 		setDisplayName,
@@ -95,6 +97,11 @@ export default function Lobby() {
 		''
 	)
 	const displayName = storedName ?? ''
+
+	// The game master's answers to "who gets what", held here rather than in
+	// the room: they travel with the start button, which is what makes what
+	// they are looking at and what the room will deal the same thing.
+	const [rolePlan, setRolePlan] = useState<Record<string, string>>({})
 
 	// Pushed to the room after a pause rather than on every keystroke: each
 	// one would otherwise fan a room state broadcast out to everybody.
@@ -247,15 +254,21 @@ export default function Lobby() {
 					</p>
 				</div>
 
-				<div className="space-y-2">
-					<h2 className="text-sm font-semibold">声を確かめる（任意）</h2>
-					<VoicePreview
-						voice={wornVoice}
-						onVoiceChange={setMyVoice}
-						onReset={clearMyVoice}
-						customised={voiceCustomised}
-					/>
-				</div>
+				<RoleDeck plan={rolePlan} onPlanChange={setRolePlan} />
+
+				{/* Nothing to tune for whoever is running the game: their voice
+				    goes out as it is, so that the narration is understood. */}
+				{!isGameMaster && (
+					<div className="space-y-2">
+						<h2 className="text-sm font-semibold">声を確かめる（任意）</h2>
+						<VoicePreview
+							voice={wornVoice}
+							onVoiceChange={setMyVoice}
+							onReset={clearMyVoice}
+							customised={voiceCustomised}
+						/>
+					</div>
+				)}
 
 				<UnmaskedIdentity name={displayName} onNameChange={setStoredName} />
 
@@ -301,7 +314,7 @@ export default function Lobby() {
 						<Tooltip content={startHint}>
 							<span>
 								<Button
-									onClick={startMeeting}
+									onClick={() => startMeeting(rolePlan)}
 									disabled={!canStart || starting || !session?.sessionId}
 								>
 									ミーティング開始

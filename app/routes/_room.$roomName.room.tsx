@@ -24,6 +24,7 @@ import { RaiseHandButton } from '~/components/RaiseHandButton'
 import { RestartButton } from '~/components/RestartButton'
 import { RevealButton } from '~/components/RevealButton'
 import { RevealCountdown } from '~/components/RevealCountdown'
+import { RoleCard } from '~/components/RoleCard'
 import { SafetyNumberToast } from '~/components/SafetyNumberToast'
 import { ScreenshareButton } from '~/components/ScreenshareButton'
 import { ChatButton, TextChat } from '~/components/TextChat'
@@ -241,15 +242,16 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 					{masquerade.countdown !== undefined && (
 						<RevealCountdown seconds={masquerade.countdown} />
 					)}
-					{!masquerade.revealed && (
-						<div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2">
+					<div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap justify-center gap-2 p-2">
+						{!masquerade.revealed && (
 							<span className="rounded-full bg-zinc-900/70 px-3 py-1 text-xs text-white">
 								{masquerade.character
 									? `${masquerade.character.emoji} ${masquerade.character.name} として参加中 — 全員が変装しています`
 									: '全員が変装しています'}
 							</span>
-						</div>
-					)}
+						)}
+						<RoleCard />
+					</div>
 					{chatOpen && (
 						<TextChat
 							messages={messages}

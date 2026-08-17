@@ -261,7 +261,9 @@ function Room({ room, userMedia }: RoomProps) {
 	// The host in the lobby is the one other exception, and the only place an
 	// unprocessed microphone leaves this browser before the reveal — see
 	// LobbyVoice for what that buys and what it costs. It goes back on the
-	// moment the phase does, which is before anybody walks into the room.
+	// moment the phase does, which is before anybody walks into the room. The
+	// game master is the exception that never goes back on: they are running
+	// the game, not hiding in it.
 	const undisguised = speaksUndisguised({ ...masquerade, speakingInLobby })
 	useEffect(() => {
 		if (undisguised) return

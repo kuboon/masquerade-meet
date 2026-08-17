@@ -26,6 +26,12 @@ import {
 	shuffled,
 	startCountdownMs,
 } from '~/utils/masquerade'
+import {
+	dealRoles,
+	maxRoleCount,
+	maxRoleLength,
+	parseRoleDeck,
+} from '~/utils/roles'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -58,9 +64,50 @@ const HOST_KEY = 'masquerade:hostId'
 const CHARACTER_SET_KEY = 'masquerade:characterSetId'
 const SEATS_KEY = 'masquerade:seats'
 const START_AT_KEY = 'masquerade:startAt'
+const ROLE_DECK_KEY = 'masquerade:roleDeck'
+/**
+ * A dealt card lives under `role-<connectionId>`, on its own.
+ *
+ * Not in the session record, for two reasons. A reload deletes that record —
+ * the page says goodbye on the way out — and losing your card because you
+ * refreshed would end the game for you. And a card that is not in the record
+ * cannot be spread into a broadcast by somebody adding a field one day: the
+ * only way one reaches the wire is a line that names it.
+ */
+const rolePrefix = 'role-'
+const GAME_MASTER_KEY = 'masquerade:gameMasterId'
+/**
+ * The game master's plan for who gets which card.
+ *
+ * Written on the way into the countdown and deleted the moment it is dealt.
+ * It is the one thing in this room that is never broadcast, not even to the
+ * game master who wrote it — they already have their own copy, and a round
+ * trip would only give the room another chance to say it out loud.
+ */
+const ROLE_PLAN_KEY = 'masquerade:rolePlan'
 
 /** Long enough for a real name, short enough not to break the tiles. */
 const MAX_NAME_LENGTH = 40
+
+/**
+ * The game master's plan, cut down to something worth storing.
+ *
+ * It arrives as whatever the client sent, so nothing here trusts its shape.
+ * Nothing checks the cards against the deck either: `dealRoles` will only
+ * hand out what the deal actually contains, and a plan naming a card that is
+ * not in it simply puts that player back in the draw.
+ */
+function sanitiseRolePlan(
+	plan: Record<string, string>
+): Record<string, string> {
+	const clean: Record<string, string> = {}
+	for (const [id, role] of Object.entries(plan).slice(0, maxRoleCount)) {
+		if (typeof id !== 'string' || typeof role !== 'string') continue
+		if (id === '' || role === '') continue
+		clean[id.slice(0, MAX_NAME_LENGTH)] = role.slice(0, maxRoleLength)
+	}
+	return clean
+}
 
 /** Long enough to say something, short enough not to be a payload. */
 const MAX_CHAT_LENGTH = 500
@@ -167,6 +214,9 @@ export class ChatRoom extends Server<Env> {
 		await this.ctx.storage.put(`heartbeat-${connection.id}`, Date.now())
 		await this.trackPeakUserCount()
 		await this.broadcastRoomState()
+		// Whatever they were holding before the page reloaded. Nothing, for
+		// somebody arriving in a room that has not dealt yet.
+		await this.sendRoleCards(connection)
 		const meetingId = await this.getMeetingId()
 		log({
 			eventName: 'onConnect',
@@ -301,7 +351,23 @@ export class ChatRoom extends Server<Env> {
 				defaultCharacterSetId,
 			seats: await this.getSeats(),
 			startAt,
+			roleDeck: await this.getRoleDeck(),
+			gameMasterId: await this.ctx.storage.get<string>(GAME_MASTER_KEY),
 		}
+	}
+
+	async getRoleDeck(): Promise<string[]> {
+		return (await this.ctx.storage.get<string[]>(ROLE_DECK_KEY)) ?? []
+	}
+
+	/** Every card that has been dealt, by connection id. */
+	async getRoles(): Promise<Map<string, string>> {
+		const roles = new Map<string, string>()
+		const stored = await this.ctx.storage.list<string>({ prefix: rolePrefix })
+		for (const [key, role] of stored) {
+			roles.set(key.slice(rolePrefix.length), role)
+		}
+		return roles
 	}
 
 	/**
@@ -325,6 +391,22 @@ export class ChatRoom extends Server<Env> {
 			joining,
 			characterSet.characters.map((c) => c.id)
 		)
+
+		// The cards go out at the same moment as the faces, and for the same
+		// reason: this is the last instant at which anything can be decided for
+		// somebody who did not decide it themselves.
+		const gameMasterId = await this.ctx.storage.get<string>(GAME_MASTER_KEY)
+		const roles = dealRoles({
+			players: joining
+				.map((user) => user.id)
+				.filter((id) => id !== gameMasterId),
+			deck: await this.getRoleDeck(),
+			plan:
+				(await this.ctx.storage.get<Record<string, string>>(ROLE_PLAN_KEY)) ??
+				{},
+		})
+		await this.ctx.storage.delete(ROLE_PLAN_KEY)
+
 		for (const user of joining) {
 			await this.ctx.storage.put(`session-${user.id}`, {
 				...user,
@@ -334,6 +416,9 @@ export class ChatRoom extends Server<Env> {
 				characterConfirmed: true,
 			} satisfies StoredUser)
 		}
+		for (const [id, role] of roles) {
+			await this.ctx.storage.put(`${rolePrefix}${id}`, role)
+		}
 
 		// Where everybody sits, settled once so that every screen in the room
 		// looks the same. Shuffled, because seating people in the order they
@@ -341,6 +426,7 @@ export class ChatRoom extends Server<Env> {
 		await this.ctx.storage.put(SEATS_KEY, shuffled(joining.map((u) => u.id)))
 		await this.ctx.storage.put(PHASE_KEY, 'masquerade' satisfies RoomPhase)
 		await this.ctx.storage.delete(START_AT_KEY)
+		await this.sendRoleCards()
 		log({
 			eventName: 'meetingStarted',
 			meetingId,
@@ -462,23 +548,64 @@ export class ChatRoom extends Server<Env> {
 
 	/**
 	 * Strips everything the other participants aren't supposed to know yet.
-	 * Real names are swapped for character names until the room is revealed.
+	 * Real names are swapped for character names until the room is revealed,
+	 * and role cards appear only then — before that they are somewhere this
+	 * function does not read from.
 	 */
 	async getPublicUsers(phase: RoomPhase, set: CharacterSet): Promise<User[]> {
 		const revealed = phase === 'revealed'
+		// Only once the masks are off. Reading them at all before that would
+		// be one refactor away from sending them.
+		const roles = revealed ? await this.getRoles() : undefined
 		const users: User[] = []
 		for (const stored of (await this.getUsers()).values()) {
 			// Arrival times stay here too: nobody needs them, and while the
 			// room is masked they are one more thing to match a person against.
-			const { realName, joinedAt: _joinedAt, ...rest } = stored
+			// The role card is pulled out by name rather than left to the
+			// spread: it comes back only at the reveal, and a card that reached
+			// the wire early would end the game rather than spoil a moment.
+			const { realName, joinedAt: _joinedAt, role: _role, ...rest } = stored
 			users.push({
 				...rest,
 				name: revealed
 					? realName || '???'
 					: (getCharacter(set, stored.characterId)?.name ?? '???'),
+				role: roles?.get(stored.id),
 			})
 		}
 		return users
+	}
+
+	/**
+	 * Tells every connection what it is holding, one connection at a time.
+	 *
+	 * Not a broadcast: the whole reason cards are not in the room state is
+	 * that the room state is a single string everybody gets a copy of. The
+	 * game master gets the deal as well, because somebody has to be able to
+	 * run the game, and they are the one person who is not playing it.
+	 *
+	 * Sent again on every reconnect, so a reload does not cost somebody their
+	 * card.
+	 */
+	private async sendRoleCards(only?: Connection) {
+		const gameMasterId = await this.ctx.storage.get<string>(GAME_MASTER_KEY)
+		const users = await this.getUsers()
+		const roles = await this.getRoles()
+		// Only the people still in the room. A card outlives its seat so that
+		// a reload gets it back, which leaves cards lying about for people who
+		// really did leave — no use to the game master and nobody to play them.
+		const deal: Record<string, string> = {}
+		for (const [id, role] of roles) {
+			if (users.has(`session-${id}`)) deal[id] = role
+		}
+
+		for (const connection of only ? [only] : this.getConnections()) {
+			this.sendMessage(connection, {
+				type: 'roleCard',
+				role: roles.get(connection.id),
+				deal: connection.id === gameMasterId ? deal : undefined,
+			})
+		}
 	}
 
 	/**
@@ -488,6 +615,15 @@ export class ChatRoom extends Server<Env> {
 	async ensureHost() {
 		const hostId = await this.ctx.storage.get<string>(HOST_KEY)
 		const users = await this.getUsers()
+
+		// A game master who has left is no game master. Otherwise the room
+		// would go on holding a card back from a seat nobody is in, and go on
+		// telling everybody there is somebody running the game.
+		const gameMasterId = await this.ctx.storage.get<string>(GAME_MASTER_KEY)
+		if (gameMasterId !== undefined && !users.has(`session-${gameMasterId}`)) {
+			await this.ctx.storage.delete(GAME_MASTER_KEY)
+		}
+
 		if (hostId !== undefined && users.has(`session-${hostId}`)) return hostId
 
 		const successor = nextHost([...users.values()])
@@ -727,11 +863,53 @@ export class ChatRoom extends Server<Env> {
 					await this.broadcastRoomState()
 					break
 				}
+				case 'setRoleDeck': {
+					const hostId = await this.ensureHost()
+					if (hostId !== connection.id) break
+					// Only in the lobby. Changing the deck under a game already
+					// being played would leave the cards in people's hands
+					// disagreeing with the cards the room says are in play.
+					const { phase } = await this.getMasqueradeState()
+					if (phase !== 'lobby') break
+					await this.ctx.storage.put(ROLE_DECK_KEY, parseRoleDeck(data.text))
+					await this.broadcastRoomState()
+					break
+				}
+				case 'setGameMaster': {
+					const hostId = await this.ensureHost()
+					if (hostId !== connection.id) break
+					const { phase } = await this.getMasqueradeState()
+					if (phase !== 'lobby') break
+					// Their own connection and no other: this is a claim about
+					// oneself, and the room has no business letting anybody make
+					// it about somebody else.
+					if (data.isGameMaster) {
+						await this.ctx.storage.put(GAME_MASTER_KEY, connection.id)
+					} else {
+						await this.ctx.storage.delete(GAME_MASTER_KEY)
+					}
+					await this.broadcastRoomState()
+					break
+				}
 				case 'startMeeting': {
 					const hostId = await this.ensureHost()
 					if (hostId !== connection.id) break
 					const { phase, startAt } = await this.getMasqueradeState()
 					if (phase !== 'lobby' || startAt !== undefined) break
+
+					// Stored, never broadcast, and only from the person who is
+					// actually dealing. A plan from anybody else is somebody
+					// trying to choose their own card.
+					const gameMasterId =
+						await this.ctx.storage.get<string>(GAME_MASTER_KEY)
+					if (gameMasterId === connection.id && data.rolePlan) {
+						await this.ctx.storage.put(
+							ROLE_PLAN_KEY,
+							sanitiseRolePlan(data.rolePlan)
+						)
+					} else {
+						await this.ctx.storage.delete(ROLE_PLAN_KEY)
+					}
 
 					const users = [...(await this.getUsers()).values()]
 					const characterSet = getCharacterSet(
@@ -795,6 +973,17 @@ export class ChatRoom extends Server<Env> {
 							characterId: dealt.get(user.id) ?? user.characterId,
 						} satisfies StoredUser)
 					}
+					// The deck and whoever is running the game both survive a
+					// restart — that is what makes another round one button —
+					// but the plan does not, because it named people by the
+					// characters they were wearing last time, and neither do the
+					// cards: keeping those would deal the same werewolf twice.
+					await this.ctx.storage.delete(ROLE_PLAN_KEY)
+					await this.ctx.storage.delete(
+						[...(await this.getRoles()).keys()].map(
+							(id) => `${rolePrefix}${id}`
+						)
+					)
 					await this.ctx.storage.put(PHASE_KEY, 'lobby' satisfies RoomPhase)
 					await this.ctx.storage.delete(REVEAL_AT_KEY)
 					await this.ctx.storage.delete(START_AT_KEY)
@@ -803,6 +992,8 @@ export class ChatRoom extends Server<Env> {
 					await this.ctx.storage.delete(SEATS_KEY)
 					log({ eventName: 'meetingRestarted', meetingId })
 					await this.broadcastRoomState()
+					// Everybody's hand is empty again, and has to be told so.
+					await this.sendRoleCards()
 					break
 				}
 				case 'removeSeat': {

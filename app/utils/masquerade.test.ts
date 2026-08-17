@@ -287,8 +287,10 @@ describe('speaksUndisguised', () => {
 		revealed: false,
 		isHost: false,
 		speakingInLobby: false,
+		isGameMaster: false,
 	}
 	const host = { ...guest, isHost: true, speakingInLobby: true }
+	const gameMaster = { ...host, speakingInLobby: false, isGameMaster: true }
 
 	it('lets the host be heard while the room is still waiting', () => {
 		// Somebody has to be able to say what is about to happen, and a mask
@@ -307,6 +309,23 @@ describe('speaksUndisguised', () => {
 		// The switch is only offered to the host, but the rule is what makes
 		// that true rather than a matter of which component got rendered.
 		expect(speaksUndisguised({ ...guest, speakingInLobby: true })).toBe(false)
+	})
+
+	it('never disguises the game master', () => {
+		// They are not in the game — no card, nobody guessing at them — and a
+		// narrator whose voice has been rearranged is no use to the table.
+		expect(speaksUndisguised(gameMaster)).toBe(true)
+		expect(speaksUndisguised({ ...gameMaster, phase: 'masquerade' })).toBe(true)
+		expect(speaksUndisguised({ ...gameMaster, phase: 'revealing' })).toBe(true)
+	})
+
+	it('does not need the lobby switch to hear the game master', () => {
+		// The switch is about whether the lobby carries their microphone at
+		// all; this is about what comes out of it, and the answer never
+		// changes for somebody running the game.
+		expect(
+			speaksUndisguised({ ...gameMaster, phase: 'masquerade', isHost: false })
+		).toBe(true)
 	})
 
 	it('keeps everybody else disguised in the lobby', () => {

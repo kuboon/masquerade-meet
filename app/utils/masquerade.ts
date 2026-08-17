@@ -112,11 +112,14 @@ export function restartParticipant<
 /**
  * Whether somebody's microphone goes out as their own voice.
  *
- * Two cases, and no others. After the reveal there is nothing left to hide.
- * And the host while the room is still in the lobby, so that whoever is
- * running it can tell everyone what is about to happen — at the price of
- * their own reveal, which is theirs to pay and nobody else's, and which is
- * why they have to ask for it rather than find they have already spent it.
+ * Three cases, and no others. After the reveal there is nothing left to hide.
+ * The host while the room is still in the lobby, so that whoever is running
+ * it can tell everyone what is about to happen — at the price of their own
+ * reveal, which is theirs to pay and nobody else's, and which is why they
+ * have to ask for it rather than find they have already spent it. And the
+ * game master throughout, because they are not in the game: they hold no
+ * card, nobody is guessing at them, and a narrator nobody can understand is
+ * no use to anybody.
  *
  * Everything else is disguised, the host included from the moment the phase
  * leaves the lobby. That happens when the start deadline falls, which is
@@ -130,6 +133,7 @@ export function speaksUndisguised({
 	revealed,
 	isHost,
 	speakingInLobby,
+	isGameMaster,
 }: {
 	phase: RoomPhase
 	/** true once this client has actually dropped its disguise */
@@ -137,8 +141,12 @@ export function speaksUndisguised({
 	isHost: boolean
 	/** the host has asked to be heard as themselves while waiting */
 	speakingInLobby: boolean
+	/** they are running the game rather than playing it */
+	isGameMaster: boolean
 }): boolean {
-	return revealed || (isHost && phase === 'lobby' && speakingInLobby)
+	return (
+		revealed || isGameMaster || (isHost && phase === 'lobby' && speakingInLobby)
+	)
 }
 
 /**
