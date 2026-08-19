@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { neutralVoice, voice, VOICE_RANGE } from './characters'
 import { toEngineParams } from './voiceChanger'
@@ -5,33 +7,39 @@ import { toEngineParams } from './voiceChanger'
 describe('toEngineParams', () => {
 	it('leaves everything alone in the middle', () => {
 		const engine = toEngineParams(neutralVoice)
-		expect(engine.pitchRatio).toBe(1)
+		expect(engine.semitones).toBe(0)
 		expect(engine.lowGain).toBeCloseTo(0)
 		expect(engine.midGain).toBeCloseTo(0)
 		expect(engine.highGain).toBeCloseTo(0)
 		expect(engine.ringModDepth).toBe(0)
-		// Nothing to modulate with, so the modulator is off rather than silent
-		// at zero depth — the worklet skips the whole branch on a zero carrier.
+		// A carrier of zero rather than a silent one. At zero depth the
+		// modulation contributes nothing either way, but a stopped oscillator
+		// is one less thing running in every participant's browser.
 		expect(engine.ringModHz).toBe(0)
 	})
 
 	it('reads size as a musical distance', () => {
-		// The same slider distance has to be the same musical distance at both
-		// ends, which is why size is exponential and not a plain multiplier.
-		expect(toEngineParams(voice(1, 0, 0)).pitchRatio).toBeCloseTo(2)
-		expect(toEngineParams(voice(-1, 0, 0)).pitchRatio).toBeCloseTo(0.5)
-		expect(toEngineParams(voice(0.5, 0, 0)).pitchRatio).toBeCloseTo(
-			2 ** (VOICE_RANGE.sizeSemitones / 2 / 12)
+		// Semitones rather than a ratio, so the same slider distance is the
+		// same musical distance at both ends without anybody having to write
+		// the exponential twice. The shifter does that part.
+		expect(toEngineParams(voice(1, 0, 0)).semitones).toBeCloseTo(
+			VOICE_RANGE.sizeSemitones
+		)
+		expect(toEngineParams(voice(-1, 0, 0)).semitones).toBeCloseTo(
+			-VOICE_RANGE.sizeSemitones
+		)
+		expect(toEngineParams(voice(0.5, 0, 0)).semitones).toBeCloseTo(
+			VOICE_RANGE.sizeSemitones / 2
 		)
 	})
 
-	it('stays inside what the worklet will accept', () => {
-		// The shifter clamps at 0.25 and 4; the ends of the slider have to land
-		// inside that or the disguise quietly stops matching the preview.
+	it('keeps the ends of the slider somewhere a voice still works', () => {
+		// Two octaves either way is where every shifter gives up; the whole
+		// range has to sit well inside that.
 		for (const size of [-1, 1]) {
-			const { pitchRatio } = toEngineParams(voice(size, 0, 0))
-			expect(pitchRatio).toBeGreaterThanOrEqual(0.25)
-			expect(pitchRatio).toBeLessThanOrEqual(4)
+			expect(
+				Math.abs(toEngineParams(voice(size, 0, 0)).semitones)
+			).toBeLessThanOrEqual(24)
 		}
 		expect(toEngineParams(voice(0, 0, 0, 1)).ringModDepth).toBeLessThanOrEqual(
 			1
@@ -76,5 +84,25 @@ describe('toEngineParams', () => {
 			toEngineParams(voice(0, 0, 0, 1)).ringModDepth
 		)
 		expect(toEngineParams(voice(0, 0, 0, -5)).ringModHz).toBe(0)
+	})
+})
+
+describe('the vendored pitch shifter', () => {
+	it('is the version package.json pins', () => {
+		// The library is served from public/ so that the browser test can
+		// render audio through the very file that ships. That means a copy,
+		// and a copy that can go stale — `npm run voice:vendor` makes it, and
+		// this is what notices when somebody bumps the dependency without
+		// running it.
+		const vendored = readFileSync(
+			join(process.cwd(), 'public/voice/SignalsmithStretch.mjs')
+		)
+		const installed = readFileSync(
+			join(
+				process.cwd(),
+				'node_modules/signalsmith-stretch/SignalsmithStretch.mjs'
+			)
+		)
+		expect(vendored.equals(installed)).toBe(true)
 	})
 })

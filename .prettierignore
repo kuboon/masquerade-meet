@@ -1,2 +1,4 @@
 public/mockServiceWorker.js
 public/e2ee/wasm-pkg/
+# vendored, byte-for-byte, by `npm run voice:vendor`
+public/voice/SignalsmithStretch.mjs

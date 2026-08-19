@@ -8,6 +8,10 @@
 		"allowSyntheticDefaultImports": true,
 		"jsx": "react-jsx",
 		"verbatimModuleSyntax": true,
+		// Paired with the resolution mode below, and what lets a dynamic
+		// import() be written at all — the voice changer fetches its WASM that
+		// way so nobody who never puts a mask on pays for it.
+		"module": "ESNext",
 		"moduleResolution": "Bundler",
 		"resolveJsonModule": true,
 		"target": "ES2019",

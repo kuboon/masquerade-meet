@@ -8,7 +8,7 @@ describe('neutral voice', () => {
 		// second half matters because that is what the reveal switches to.
 		expect(neutralVoice).toEqual(voice(0, 0, 0, 0))
 		const engine = toEngineParams(neutralVoice)
-		expect(engine.pitchRatio).toBe(1)
+		expect(engine.semitones).toBe(0)
 		expect(engine.ringModDepth).toBe(0)
 		expect(engine.lowGain).toBeCloseTo(0)
 		expect(engine.midGain).toBeCloseTo(0)

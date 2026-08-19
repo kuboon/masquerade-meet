@@ -2,37 +2,28 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { VoiceParams } from '~/utils/characters'
 import {
 	applyVoiceParams,
-	createToneNodes,
-	createVoiceChangerNode,
-	type ToneNodes,
+	createVoiceGraph,
+	disposeVoiceGraph,
+	type VoiceGraph,
 } from '~/utils/voiceChanger'
 
 /** Long enough for a sentence, short enough to loop without getting tiresome. */
 export const RECORD_SECONDS = 5
 
-interface Graph {
-	context: AudioContext
-	worklet: AudioWorkletNode
-	tone: ToneNodes
-}
-
 /**
  * Hearing yourself as somebody else, without a meeting.
  *
- * The graph is the production one — the same worklet and the same tone stack,
- * built from the same helpers — with a recorded loop where the microphone
- * would be. That is the point: a voice that sounds right here has to sound
- * the same in a meeting.
+ * The graph is the production one — literally the same builder, not a copy
+ * of it — with a recorded loop where the microphone would be. That is the
+ * point: a voice that sounds right here has to sound the same in a meeting.
  *
  * A loop rather than live monitoring, and deliberately so. Anybody listening
  * on speakers with an open microphone would otherwise be handed a howl, and
  * the whole business here is people turning their volume up to listen
  * closely.
  *
- * Two things it does not reproduce: the optional noise suppression transform
- * is not in this chain, and the sample rate is whatever this machine's output
- * runs at, while the worklet's grain size is counted in samples — so
- * artefacts shift a little between devices.
+ * One thing it does not reproduce: the optional noise suppression transform
+ * is not in this chain.
  */
 export default function useVoicePreview(voice: VoiceParams) {
 	const [recording, setRecording] = useState(false)
@@ -43,7 +34,7 @@ export default function useVoicePreview(voice: VoiceParams) {
 	const [bypass, setBypass] = useState(false)
 	const [error, setError] = useState<string>()
 
-	const graphRef = useRef<Graph>()
+	const graphRef = useRef<VoiceGraph<AudioContext>>()
 	const bufferRef = useRef<AudioBuffer>()
 	const sourceRef = useRef<AudioBufferSourceNode>()
 
@@ -55,18 +46,18 @@ export default function useVoicePreview(voice: VoiceParams) {
 			return graphRef.current
 		}
 		const context = new AudioContext()
-		const worklet = await createVoiceChangerNode(context)
-		const tone = createToneNodes(context)
-		worklet.connect(tone.low).connect(tone.mid).connect(tone.high)
-		tone.high.connect(context.destination)
-		graphRef.current = { context, worklet, tone }
-		return graphRef.current
+		const graph = await createVoiceGraph(context)
+		graph.output.connect(context.destination)
+		graphRef.current = graph
+		return graph
 	}, [])
 
 	useEffect(
 		() => () => {
 			sourceRef.current?.stop()
-			graphRef.current?.context.close().catch(() => {})
+			const graph = graphRef.current
+			if (graph) disposeVoiceGraph(graph)
+			graph?.context.close().catch(() => {})
 		},
 		[]
 	)
@@ -76,7 +67,7 @@ export default function useVoicePreview(voice: VoiceParams) {
 	useEffect(() => {
 		const graph = graphRef.current
 		if (!graph) return
-		applyVoiceParams(graph.context, graph.worklet, graph.tone, voice)
+		applyVoiceParams(graph, voice)
 	}, [voice])
 
 	const stop = useCallback(() => {
@@ -89,13 +80,13 @@ export default function useVoicePreview(voice: VoiceParams) {
 		const buffer = bufferRef.current
 		if (!buffer) return
 		const graph = await ensureGraph()
-		applyVoiceParams(graph.context, graph.worklet, graph.tone, voice)
+		applyVoiceParams(graph, voice)
 
 		sourceRef.current?.stop()
 		const source = graph.context.createBufferSource()
 		source.buffer = buffer
 		source.loop = true
-		source.connect(bypass ? graph.context.destination : graph.worklet)
+		source.connect(bypass ? graph.context.destination : graph.input)
 		source.start()
 		sourceRef.current = source
 		setPlaying(true)
@@ -107,7 +98,7 @@ export default function useVoicePreview(voice: VoiceParams) {
 		const source = sourceRef.current
 		if (!graph || !source) return
 		source.disconnect()
-		source.connect(bypass ? graph.context.destination : graph.worklet)
+		source.connect(bypass ? graph.context.destination : graph.input)
 	}, [bypass])
 
 	// Set while a recording is in flight so it can be cut short.
