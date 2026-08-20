@@ -38,3 +38,24 @@ new_sqlite_classes = ["ChatRoom"]
 
 # Optional secrets:
 # - OPENAI_API_TOKEN
+
+# The Worker every pull request is deployed to, as `masquerade-meet-preview`.
+#
+# A whole Worker of its own rather than a preview version of the production
+# one: `wrangler versions upload` refuses to run against Workers Sites, which
+# is how this project serves `public/`. The consolation is that it isolates
+# more than a version would have — a separate Worker gets a separate Durable
+# Object namespace, so a room opened in a preview cannot be walked into from
+# production by guessing its name.
+#
+# One shared Worker rather than one per pull request: whichever branch was
+# pushed last is what is standing there, which suits a project with one branch
+# in flight and leaves nothing to clean up afterwards.
+#
+# Bindings are not inherited by environments, so the Durable Object has to be
+# named again here. `main`, `site` and the compatibility settings are.
+[env.preview]
+
+[[env.preview.durable_objects.bindings]]
+name = "rooms"
+class_name = "ChatRoom"
