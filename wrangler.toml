@@ -4,8 +4,12 @@ compatibility_date = "2024-10-07"
 main = "./build/index.js"
 compatibility_flags = ["nodejs_compat"]
 
-[site]
-  bucket = "./public"
+# Everything in public/ is served before the Worker runs, so `server.ts` only
+# ever sees requests that match no file. Replaces Workers Sites, which is
+# deprecated, kept assets in a KV namespace the Worker had to read itself, and
+# is the one thing `wrangler versions upload` refuses to work with.
+[assets]
+  directory = "./public"
 
 # CALLS_APP_ID and CALLS_APP_SECRET are deliberately NOT declared here.
 # Both come from your Cloudflare Realtime application, both are per-account,
@@ -42,11 +46,11 @@ new_sqlite_classes = ["ChatRoom"]
 # The Worker every pull request is deployed to, as `masquerade-meet-preview`.
 #
 # A whole Worker of its own rather than a preview version of the production
-# one: `wrangler versions upload` refuses to run against Workers Sites, which
-# is how this project serves `public/`. The consolation is that it isolates
-# more than a version would have — a separate Worker gets a separate Durable
-# Object namespace, so a room opened in a preview cannot be walked into from
-# production by guessing its name.
+# one. `wrangler versions upload` would do the latter and is available now
+# that assets have moved off Workers Sites, but a version shares its
+# bindings with production — including the Durable Object namespace, so a
+# room opened in a preview could be walked into from production by guessing
+# its name. A separate Worker gets a namespace of its own.
 #
 # One shared Worker rather than one per pull request: whichever branch was
 # pushed last is what is standing there, which suits a project with one branch

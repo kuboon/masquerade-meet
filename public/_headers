@@ -1,0 +1,8 @@
+# Remix fingerprints everything it builds — root-G36FECFU.js and the like —
+# so the URL changes whenever the contents do and the browser never needs to
+# ask about one twice. Workers Sites did this from code in server.ts; Static
+# Assets takes it from here instead, and defaults everything else to
+# revalidate-always, which is what the rest of public/ wants: those names are
+# stable and the files behind them are not.
+/build/*
+  Cache-Control: public, max-age=31536000, immutable
