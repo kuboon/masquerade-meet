@@ -56,6 +56,28 @@ export interface VoiceParams {
 	 * been shouting, or that never quite settles onto a pitch.
 	 */
 	roughness: number
+	/**
+	 * How big the speaker's head is, against how big `size` says the rest of
+	 * them is. -1 a mouth far too large for the voice, +1 far too small.
+	 *
+	 * The formants alone, moved apart from the pitch. `size` moves both
+	 * together because that is what a bigger or smaller person is; this is
+	 * the mismatch, and a mismatch is not something people come in — which
+	 * is precisely why it is useful for a character who is not a person. A
+	 * deep voice out of a tiny mouth is a cartoon, and there is no way to
+	 * arrive at one by moving `size`.
+	 *
+	 * The one axis with no slider. A character carries it and the lobby's
+	 * four controls never touch it: whoever tunes their own voice is tuning
+	 * their own body, and this is the part that belongs to the mask. Nothing
+	 * needed it until the shifter could move formants on their own, and
+	 * nothing needed a slider for it once a character was settled before the
+	 * tuning rather than after.
+	 *
+	 * Optional, and absent means 0 — every character written before this
+	 * existed sounds exactly as it did.
+	 */
+	throat?: number
 }
 
 export interface Character {
@@ -92,9 +114,11 @@ export function voice(
 	size: number,
 	weight: number,
 	nasal: number,
-	roughness = 0
+	roughness = 0,
+	/** last because it has no slider to appear on */
+	throat = 0
 ): VoiceParams {
-	return { size, weight, nasal, roughness }
+	return { size, weight, nasal, roughness, throat }
 }
 
 /** The voice applied when nobody is hiding: a straight passthrough. */
@@ -115,6 +139,14 @@ export const VOICE_RANGE = {
 	nasalDb: 9,
 	/** ring modulator depth at roughness = 1 */
 	roughnessDepth: 0.55,
+	/**
+	 * semitones the formants move on their own at throat = ±1
+	 *
+	 * Narrower than `size`, because this one has nowhere to hide: shifting
+	 * formants a whole octave away from the pitch stops sounding like a
+	 * throat and starts sounding like a fault.
+	 */
+	throatSemitones: 8,
 } as const
 
 /**
@@ -123,9 +155,11 @@ export const VOICE_RANGE = {
  * Size is what carries it: two semitones is inside the range one person's
  * voice moves on its own, so anything smaller leaves them recognisable
  * however the other three are set. A rasp nobody has can carry it instead,
- * at any pitch.
+ * at any pitch — and so can a throat that does not match the voice, which
+ * is a thing no real speaker can do at all.
  */
 export function isDisguised(params: VoiceParams): boolean {
 	const semitones = Math.abs(params.size) * VOICE_RANGE.sizeSemitones
-	return semitones >= 2 || params.roughness >= 0.3
+	const formants = Math.abs(params.throat ?? 0) * VOICE_RANGE.throatSemitones
+	return semitones >= 2 || formants >= 2 || params.roughness >= 0.3
 }

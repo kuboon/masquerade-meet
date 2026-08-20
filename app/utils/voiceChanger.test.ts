@@ -18,6 +18,35 @@ describe('toEngineParams', () => {
 		expect(engine.ringModHz).toBe(0)
 	})
 
+	it('moves the formants with the pitch when nothing says otherwise', () => {
+		// The whole compatibility story in one line: equal numbers mean one
+		// body growing or shrinking, which is what every character written
+		// before `throat` existed asked for and still gets.
+		for (const size of [-1, -0.4, 0, 0.5, 1]) {
+			const engine = toEngineParams(voice(size, 0, 0))
+			expect(engine.formantSemitones).toBeCloseTo(engine.semitones)
+		}
+	})
+
+	it('moves the formants on their own for a throat that does not match', () => {
+		const engine = toEngineParams({ ...voice(0, 0, 0), throat: 1 })
+		expect(engine.semitones).toBe(0)
+		expect(engine.formantSemitones).toBeCloseTo(VOICE_RANGE.throatSemitones)
+
+		// And it is measured from the pitch, not instead of it.
+		const deep = toEngineParams({ ...voice(-1, 0, 0), throat: 1 })
+		expect(deep.semitones).toBeCloseTo(-VOICE_RANGE.sizeSemitones)
+		expect(deep.formantSemitones).toBeCloseTo(
+			-VOICE_RANGE.sizeSemitones + VOICE_RANGE.throatSemitones
+		)
+	})
+
+	it('treats a missing throat as no throat at all', () => {
+		const absent = toEngineParams(voice(0.5, 0, 0))
+		const explicit = toEngineParams({ ...voice(0.5, 0, 0), throat: 0 })
+		expect(absent).toEqual(explicit)
+	})
+
 	it('reads size as a musical distance', () => {
 		// Semitones rather than a ratio, so the same slider distance is the
 		// same musical distance at both ends without anybody having to write

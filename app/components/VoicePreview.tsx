@@ -10,9 +10,10 @@ import { Toggle } from './Toggle'
 /**
  * Hear yourself as somebody else, and change who that is.
  *
- * The four sliders are the whole voice, not an adjustment to the character's:
- * whoever tunes one here keeps it when the draw hands them a different face.
- * The character only decides where the sliders start.
+ * Four sliders, and the character has a fifth that is not here: `throat`
+ * belongs to the mask rather than to the body behind it, and it survives
+ * whatever is done on this screen. These four are the person — how big they
+ * are, where their voice sits — and tuning them is tuning yourself.
  */
 export function VoicePreview({
 	voice,
@@ -106,7 +107,7 @@ export function VoicePreview({
 					<div className="flex flex-wrap items-center gap-3">
 						<p className="text-xs text-zinc-500 dark:text-zinc-400">
 							{customised
-								? 'この声は、抽選でどのキャラクターになっても引き継がれます。'
+								? 'この声はこのブラウザに覚えてあり、次のルームでも使われます。キャラクター固有の響きはそのまま残ります。'
 								: 'いまはキャラクターの声です。動かすとあなたの声になります。'}
 						</p>
 						{customised && (

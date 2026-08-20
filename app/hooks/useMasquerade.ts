@@ -123,11 +123,18 @@ export default function useMasquerade({
 
 	// The disguise itself. Retargets the live audio graph, so switching
 	// characters or dropping the mask is seamless.
-	// Whatever they tuned wins over whatever they were dealt: somebody who
-	// spent the lobby getting their voice right does not want it taken away by
-	// a draw they had no say in.
+	//
+	// Whatever they tuned wins over whatever the character says — on the four
+	// axes they were offered. `throat` is not one of them: it belongs to the
+	// mask rather than to the body behind it, so it survives the tuning
+	// instead of being flattened to zero by a slider that cannot reach it.
 	const [myVoice, setMyVoice, clearMyVoice] = useMyVoice()
-	const wornVoice = myVoice ?? character?.voice ?? neutralVoice
+	const throat = character?.voice.throat
+	const wornVoice = useMemo(
+		() =>
+			myVoice ? { ...myVoice, throat } : (character?.voice ?? neutralVoice),
+		[myVoice, throat, character]
+	)
 	useEffect(() => {
 		setVoiceParams(revealed || !character ? neutralVoice : wornVoice)
 	}, [revealed, character, wornVoice])
@@ -259,7 +266,10 @@ export default function useMasquerade({
 		),
 		startReveal: useCallback(() => send({ type: 'startReveal' }), [send]),
 		restartMeeting: useCallback(() => send({ type: 'restartMeeting' }), [send]),
-		/** the voice going out: theirs if they tuned one, else the character's */
+		/**
+		 * The voice going out: theirs if they tuned one, else the
+		 * character's — and the character's throat either way.
+		 */
 		wornVoice,
 		/** true once they have tuned one of their own */
 		voiceCustomised: myVoice !== undefined,

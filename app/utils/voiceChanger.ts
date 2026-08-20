@@ -37,8 +37,18 @@ export const STRETCH_BLOCK_MS = 60
 
 /** The engine's own controls, worked out from the four a person sees. */
 export interface EngineParams {
-	/** how far the whole voice moves, formants and all */
+	/** how far the pitch moves */
 	semitones: number
+	/**
+	 * Where the formants end up, measured from where they started rather
+	 * than from the pitch — which is what `formantCompensation` buys, and
+	 * why this is not simply `semitones`.
+	 *
+	 * Equal to `semitones` means they travel with it: one body, growing and
+	 * shrinking together, which is what every character did before `throat`
+	 * existed and what every character with no `throat` still does.
+	 */
+	formantSemitones: number
 	ringModHz: number
 	ringModDepth: number
 	lowGain: number
@@ -59,6 +69,10 @@ export function toEngineParams(params: VoiceParams): EngineParams {
 		// Semitones all the way down now: the shifter speaks them, so the
 		// exponential that used to live here does not have to exist twice.
 		semitones: params.size * VOICE_RANGE.sizeSemitones,
+		// The pitch, and then the throat on top of it.
+		formantSemitones:
+			params.size * VOICE_RANGE.sizeSemitones +
+			(params.throat ?? 0) * VOICE_RANGE.throatSemitones,
 		// Low enough to be heard as a rasp in the voice rather than as a tone
 		// beside it, and rising a little so the top of the slider buzzes.
 		ringModHz: rough > 0 ? 28 + rough * 45 : 0,
@@ -235,10 +249,18 @@ export function applyVoiceParams(graph: VoiceGraph, params: VoiceParams) {
 	const scheduled = graph.stretch.schedule({
 		active: true,
 		semitones: engine.semitones,
-		// Formants travel with the pitch: one axis, one body, growing and
-		// shrinking together. Holding them still is what the engine can now
-		// do and the sliders cannot yet ask for.
-		formantCompensation: false,
+		// Always compensated, so that `formantSemitones` is measured from
+		// where the formants started rather than from the shifted pitch. That
+		// makes "travel with the pitch" the case where the two numbers are
+		// equal, and everything else a throat that does not match the voice.
+		//
+		// Measured rather than assumed: compensating and asking for exactly
+		// the pitch shift renders identically to not compensating at all —
+		// see `e2e-tests/voice-changer.spec.ts`, which pins that, because it
+		// is what keeps every character written before `throat` sounding the
+		// way it always did.
+		formantCompensation: true,
+		formantSemitones: engine.formantSemitones,
 	})
 
 	ramp(graph.carrier.frequency, engine.ringModHz, now)
