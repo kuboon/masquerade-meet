@@ -121,11 +121,15 @@ for (const set of characterSets) {
 			}
 		})
 
-		it('keeps every pitch inside what the worklet will take', () => {
+		it('keeps every pitch somewhere a voice still works', () => {
+			// Two octaves either way is where every shifter gives up, and the
+			// measured quality floor in e2e-tests/voice-changer.spec.ts is only
+			// promised across the slider's own range.
 			for (const { id, voice } of set.characters) {
-				const { pitchRatio } = toEngineParams(voice)
-				expect(pitchRatio, id).toBeGreaterThanOrEqual(0.25)
-				expect(pitchRatio, id).toBeLessThanOrEqual(4)
+				expect(
+					Math.abs(toEngineParams(voice).semitones),
+					id
+				).toBeLessThanOrEqual(24)
 			}
 		})
 
