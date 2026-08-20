@@ -48,7 +48,7 @@ jobs:
       - run: >
           npx playwright test
           voice-changer dev-voice entry still-image host-succession rejoining
-          seating settings lobby character-lock roles
+          seating settings lobby character-lock roles assets
         env:
           # serve the built worker instead of the Remix watch-mode dev server
           PLAYWRIGHT_WEB_SERVER_COMMAND: npm start
@@ -83,11 +83,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # `wrangler versions upload` would have been the tidier answer — a
-      # preview of the production Worker, no second Worker to keep — but it
-      # refuses to run against Workers Sites, which is how `public/` is
-      # served here. So this is a deploy to the preview Worker instead; see
-      # the [env.preview] block in wrangler.toml.
+      # A deploy to the preview Worker rather than `wrangler versions upload`
+      # against the production one. Both work now that assets have moved off
+      # Workers Sites; a separate Worker is kept because it gets a separate
+      # Durable Object namespace with it, so a room opened in a preview
+      # cannot be walked into from production by guessing its name. See the
+      # [env.preview] block in wrangler.toml.
       - id: upload
         run: |
           set -o pipefail
