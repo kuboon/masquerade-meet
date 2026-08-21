@@ -33,3 +33,21 @@ describe('isDisguised', () => {
 		expect(isDisguised(voice(0, 0, 0, 0.5))).toBe(true)
 	})
 })
+
+describe('isDisguised', () => {
+	it('counts a throat that does not match the voice', () => {
+		// Nobody speaks out of a mouth the wrong size for them, so this hides
+		// a person on its own even at their own pitch — and a character built
+		// that way must not be reported as leaving them recognisable.
+		expect(isDisguised({ ...voice(0, 0, 0), throat: 0.6 })).toBe(true)
+		expect(isDisguised({ ...voice(0, 0, 0), throat: -0.6 })).toBe(true)
+	})
+
+	it('is not fooled by a throat too small to hear', () => {
+		expect(isDisguised({ ...voice(0, 0, 0), throat: 0.05 })).toBe(false)
+	})
+
+	it('still says nothing is happening in the middle', () => {
+		expect(isDisguised(neutralVoice)).toBe(false)
+	})
+})

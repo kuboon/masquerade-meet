@@ -16,7 +16,7 @@ import {
 } from '~/utils/characterSets'
 import type { Character, CharacterSet, VoiceParams } from '~/utils/characters'
 import { cn } from '~/utils/style'
-import { VOICE_AXES } from '~/utils/voiceAxes'
+import { TUNING_AXES } from '~/utils/voiceAxes'
 
 export const meta: MetaFunction = () => [
 	{ title: 'ボイス調整ツール' },
@@ -31,15 +31,23 @@ type Drafts = Record<string, Record<string, VoiceParams>>
 const round = (value: number) => Number(value.toFixed(4))
 
 function voiceParamsEqual(a: VoiceParams, b: VoiceParams) {
-	return JSON.stringify(a) === JSON.stringify(b)
+	// Axis by axis rather than by serialising: `throat` is optional, so an
+	// untouched character and one explicitly set to zero are the same voice
+	// written two ways, and stringifying would call them different.
+	return TUNING_AXES.every((axis) => (a[axis.key] ?? 0) === (b[axis.key] ?? 0))
 }
 
 /** The same shape the character files are written in, ready to paste. */
 function toSource(v: VoiceParams) {
-	const args = [v.size, v.weight, v.nasal, v.roughness].map(round)
-	// The fourth is optional in the helper, and most characters are clean.
-	const written = v.roughness === 0 ? args.slice(0, 3) : args
-	return `voice: voice(${written.join(', ')}),`
+	const args = [v.size, v.weight, v.nasal, v.roughness, v.throat ?? 0].map(
+		round
+	)
+	// The last two are optional in the helper, and most characters are a
+	// clean voice out of a matching throat. Trailing zeroes come off, but
+	// only trailing ones: a character with a throat and no rasp still has to
+	// write the rasp to reach past it.
+	while (args.length > 3 && args[args.length - 1] === 0) args.pop()
+	return `voice: voice(${args.join(', ')}),`
 }
 
 /**
@@ -263,7 +271,7 @@ export default function DevVoice() {
 				</div>
 
 				<div className="space-y-4">
-					{VOICE_AXES.map((axis) => (
+					{TUNING_AXES.map((axis) => (
 						<Slider
 							key={axis.key}
 							label={axis.label}
@@ -271,7 +279,7 @@ export default function DevVoice() {
 							min={axis.min}
 							max={axis.max}
 							step={0.01}
-							value={voice[axis.key]}
+							value={voice[axis.key] ?? 0}
 							onChange={setField(axis.key)}
 						/>
 					))}

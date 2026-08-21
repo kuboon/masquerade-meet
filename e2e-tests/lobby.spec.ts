@@ -77,7 +77,7 @@ test('walks everybody in on the deadline, with nobody asked to say they are read
 	await expect(page).toHaveURL(new RegExp(`/${name}/room`), { timeout: 30_000 })
 })
 
-test('lets somebody hear and retune their voice before the draw', async ({
+test('lets somebody hear and retune their voice before the meeting', async ({
 	page,
 }) => {
 	await page.goto(`/${room()}`)
@@ -88,19 +88,18 @@ test('lets somebody hear and retune their voice before the draw', async ({
 
 	await record(page)
 
-	// Four controls, and no more: the whole voice fits on one screen.
+	// Four controls, and no more: the whole of what a person tunes fits on
+	// one screen. The character's own throat is not among them — that one
+	// belongs to the mask, and survives everything done here.
 	const sliders = page.getByRole('slider')
 	await expect(sliders).toHaveCount(4)
 	await expect(
 		page.getByText('いまはキャラクターの声です。動かすとあなたの声になります。')
 	).toBeVisible()
 
-	// Touching one takes ownership of the voice, which is what survives the
-	// draw handing them a different character.
+	// Touching one takes ownership of the voice, and the browser keeps it.
 	await sliders.first().fill('0.5')
-	await expect(
-		page.getByText('この声は、抽選でどのキャラクターになっても引き継がれます。')
-	).toBeVisible()
+	await expect(page.getByText('この声はこのブラウザに覚えてあり')).toBeVisible()
 
 	await page.getByRole('button', { name: 'キャラクターの声にもどす' }).click()
 	await expect(

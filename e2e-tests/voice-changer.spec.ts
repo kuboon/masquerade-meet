@@ -113,6 +113,42 @@ function detectPitch(buf) {
 	return 0
 }
 
+/**
+ * The rendered samples for one configuration, plus a couple of numbers read
+ * off them. Used to compare two configurations against each other, where the
+ * audio itself is a sharper answer than any measurement of it.
+ */
+async function renderWith(semitones, opts) {
+	const ctx = new OfflineAudioContext(1, SR * 2, SR)
+	const src = source(ctx)
+	const mod = await import('/voice/SignalsmithStretch.mjs')
+	const node = await mod.default(ctx, {
+		numberOfInputs: 1,
+		numberOfOutputs: 1,
+		outputChannelCount: [1],
+	})
+	await node.configure({ blockMs: ${BLOCK_MS}, splitComputation: true })
+	await node.schedule({ active: true, semitones, ...opts })
+	src.out.connect(node).connect(ctx.destination)
+	src.osc.start()
+	const rendered = (await ctx.startRendering()).getChannelData(0)
+	const slice = rendered.slice(SR, SR + 32768)
+
+	// Energy-weighted mean frequency. A throat shifted upwards drags it up
+	// whatever the pitch is doing, which is the whole point of the axis.
+	let weighted = 0, total = 0
+	for (let hz = 200; hz < 4000; hz += 25) {
+		const e = energyAt(slice, hz)
+		weighted += hz * e
+		total += e
+	}
+	return {
+		samples: Array.from(slice.slice(0, 4096)),
+		pitch: detectPitch(slice),
+		centroid: total > 0 ? weighted / total : 0,
+	}
+}
+
 async function render(semitones) {
 	// Two seconds, and everything is read from the second one: the shifter
 	// has a block to fill before it says anything.
@@ -165,7 +201,7 @@ async function render(semitones) {
 	}
 }
 
-return { render }
+return { render, renderWith }
 })()
 `
 
@@ -221,6 +257,55 @@ test.describe('voice changer', () => {
 			expect((await shift(page, semitones)).leakDb).toBeGreaterThan(FLOOR_DB)
 		})
 	}
+
+	test('moves the formants with the pitch unless a throat says otherwise', async ({
+		page,
+	}) => {
+		// The compatibility promise, and the reason `applyVoiceParams` can
+		// compensate unconditionally: asking for exactly the pitch shift is
+		// the same thing as not compensating at all. Every character written
+		// before `throat` existed depends on this being true.
+		await page.addScriptTag({ content: HARNESS })
+		const [following, uncompensated] = await page.evaluate(() =>
+			Promise.all([
+				(window as any).__voice.renderWith(-7, {
+					formantCompensation: true,
+					formantSemitones: -7,
+				}),
+				(window as any).__voice.renderWith(-7, { formantCompensation: false }),
+			])
+		)
+		const worst = following.samples.reduce(
+			(max: number, v: number, i: number) =>
+				Math.max(max, Math.abs(v - uncompensated.samples[i])),
+			0
+		)
+		expect(worst).toBeLessThan(1e-6)
+	})
+
+	test('a throat moves the formants and leaves the pitch where it was', async ({
+		page,
+	}) => {
+		await page.addScriptTag({ content: HARNESS })
+		const [matching, small] = await page.evaluate(() =>
+			Promise.all([
+				(window as any).__voice.renderWith(-7, {
+					formantCompensation: true,
+					formantSemitones: -7,
+				}),
+				// The same voice out of a mouth eight semitones too small.
+				(window as any).__voice.renderWith(-7, {
+					formantCompensation: true,
+					formantSemitones: -7 + 8,
+				}),
+			])
+		)
+		// Still the same person, speaking just as low.
+		expect(small.pitch).toBeGreaterThan(matching.pitch * 0.97)
+		expect(small.pitch).toBeLessThan(matching.pitch * 1.03)
+		// Out of a much smaller mouth.
+		expect(small.centroid).toBeGreaterThan(matching.centroid * 1.15)
+	})
 
 	test('stays close enough behind to hold a conversation', async ({ page }) => {
 		const latencyMs = await page.evaluate(async () => {
