@@ -64,12 +64,22 @@ if (missing.length > 0) {
 	process.exit(1)
 }
 
-console.log(`Uploading ${names.length} secrets: ${names.join(', ')}`)
+const target = process.argv.slice(2)
+console.log(
+	`Uploading ${names.length} secrets: ${names.join(', ')}` +
+		(target.length > 0 ? ` (wrangler ${target.join(' ')})` : '')
+)
 
-const result = spawnSync('wrangler', ['secret', 'bulk'], {
-	input: JSON.stringify(secrets),
-	stdio: ['pipe', 'inherit', 'inherit'],
-	shell: process.platform === 'win32',
-})
+// Anything after `--` goes to wrangler, so that the preview Worker can be
+// filled in the same way: `npm run deploy:secrets -- -e preview`.
+const result = spawnSync(
+	'wrangler',
+	['secret', 'bulk', ...process.argv.slice(2)],
+	{
+		input: JSON.stringify(secrets),
+		stdio: ['pipe', 'inherit', 'inherit'],
+		shell: process.platform === 'win32',
+	}
+)
 
 process.exit(result.status ?? 1)
