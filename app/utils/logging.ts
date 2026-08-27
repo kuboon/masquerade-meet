@@ -45,6 +45,11 @@ export type LogEvent =
 			connectionId: string
 	  }
 	| {
+			/** somebody who arrived at a full meeting, finally given a face */
+			eventName: 'waitingParticipantAdmitted'
+			connectionId: string
+	  }
+	| {
 			eventName: 'meetingStarted'
 			meetingId?: string
 			users: number

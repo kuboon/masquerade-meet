@@ -547,6 +547,47 @@ export class ChatRoom extends Server<Env> {
 	}
 
 	/**
+	 * Lets in anybody who arrived to find every face already worn.
+	 *
+	 * A meeting can hold as many people as the set has characters and no
+	 * more, so somebody who turns up at a full one is held in the lobby
+	 * rather than walked in bare — the alternative was a participant with no
+	 * mask and, because the disguise is applied per character, no disguise on
+	 * their voice either.
+	 *
+	 * Held, not turned away: this runs whenever somebody leaves, so the wait
+	 * ends by itself. Called after the departure has been written, so the
+	 * character it frees is already going spare.
+	 */
+	private async admitWaiting() {
+		const { phase } = await this.getMasqueradeState()
+		if (phase === 'lobby') return
+		const set = getCharacterSet(
+			await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+		)
+		let admitted = false
+		for (const [key, user] of await this.getUsers()) {
+			if (user.characterId) continue
+			// Somebody with no name is waiting on themselves, not on a face;
+			// `setDisplayName` walks them in when they type one.
+			if (user.realName === '') continue
+			// Read fresh each time: the last time round this loop may have
+			// taken the only one that was going.
+			const free = await this.pickCharacterPreference(set)
+			if (free === undefined) break
+			await this.ctx.storage.put(key, {
+				...user,
+				characterId: free,
+				characterConfirmed: true,
+			} satisfies StoredUser)
+			await this.takeSeat(user.id)
+			admitted = true
+			log({ eventName: 'waitingParticipantAdmitted', connectionId: user.id })
+		}
+		return admitted
+	}
+
+	/**
 	 * Strips everything the other participants aren't supposed to know yet.
 	 * Real names are swapped for character names until the room is revealed,
 	 * and role cards appear only then — before that they are somewhere this
@@ -738,6 +779,9 @@ export class ChatRoom extends Server<Env> {
 						})
 					log({ eventName: 'userLeft', meetingId, connectionId: connection.id })
 
+					// Their face is going spare now, so anybody who arrived to
+					// find the room full can have it.
+					await this.admitWaiting()
 					await this.broadcastRoomState()
 					break
 				}
@@ -1395,6 +1439,9 @@ export class ChatRoom extends Server<Env> {
 			this.endMeeting(meetingId)
 		} else if (removedUsers > 0) {
 			await this.ensureHost()
+			// Same as an explicit goodbye: the faces they were wearing are
+			// free, and somebody may be waiting in the lobby for one.
+			await this.admitWaiting()
 			this.broadcastRoomState()
 		}
 
