@@ -43,6 +43,20 @@ new_sqlite_classes = ["ChatRoom"]
 # Optional secrets:
 # - OPENAI_API_TOKEN
 
+# Workers Logs: console output from the deployed Worker, queryable in the
+# dashboard rather than only through a live `wrangler tail`.
+#
+# Worth having because the one outage this project has had was invisible from
+# outside — every room failed to open a Realtime session, and the only way to
+# see why was to read a value the app happened to embed in its own HTML.
+#
+# `invocation_logs = false` drops the automatic one-line-per-request entries
+# and keeps what the code actually logs, which is the half worth paying for.
+[observability.logs]
+  enabled = true
+  invocation_logs = false
+  persist = false
+
 # The Worker every pull request is deployed to, as `masquerade-meet-preview`.
 #
 # A whole Worker of its own rather than a preview version of the production
