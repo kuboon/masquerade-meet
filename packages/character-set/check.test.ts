@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+	characterSetLimits,
+	checkCharacterSet,
 	embeddedSetType,
-	externalSetLimits,
-	fetchExternalCharacterSet,
-	isExternalSetUrl,
-	parseExternalCharacterSet,
-} from './externalCharacterSet'
+	fetchCharacterSet,
+	isCharacterSetUrl,
+} from './check.ts'
 
 const source = new URL('https://example.com/masquerade/set.json')
 
@@ -33,9 +33,9 @@ const good = () => ({
 	],
 })
 
-const parse = (document: unknown) => parseExternalCharacterSet(document, source)
+const parse = (document: unknown) => checkCharacterSet(document, source)
 
-describe('parseExternalCharacterSet', () => {
+describe('checkCharacterSet', () => {
 	it('reads a set somebody else published', () => {
 		const { set, problems } = parse(good())
 		expect(problems).toEqual([])
@@ -150,7 +150,7 @@ describe('parseExternalCharacterSet', () => {
 	it('stops at a roster no room could seat', () => {
 		const document = good()
 		document.characters = Array.from(
-			{ length: externalSetLimits.maxCharacters + 5 },
+			{ length: characterSetLimits.maxCharacters + 5 },
 			(_, i) => ({ ...good().characters[0], id: `c${i}` })
 		)
 		expect(parse(document).problems.join()).toContain('多すぎます')
@@ -159,7 +159,7 @@ describe('parseExternalCharacterSet', () => {
 	it('refuses a name long enough to break the tiles', () => {
 		const document = good()
 		document.characters[0].name = 'あ'.repeat(
-			externalSetLimits.characterName + 1
+			characterSetLimits.characterName + 1
 		)
 		expect(parse(document).set).toBeUndefined()
 	})
@@ -172,14 +172,14 @@ describe('parseExternalCharacterSet', () => {
 	})
 })
 
-describe('isExternalSetUrl', () => {
+describe('isCharacterSetUrl', () => {
 	it('takes an https address', () => {
-		expect(isExternalSetUrl('https://example.com/set.json')).toBe(true)
+		expect(isCharacterSetUrl('https://example.com/set.json')).toBe(true)
 	})
 
 	it('leaves a built-in set id alone', () => {
 		// `?set=animals` is not a URL and must stay the registry's business.
-		expect(isExternalSetUrl('animals')).toBe(false)
+		expect(isCharacterSetUrl('animals')).toBe(false)
 	})
 
 	it('refuses every other scheme the room could be talked into', () => {
@@ -190,20 +190,20 @@ describe('isExternalSetUrl', () => {
 			// eslint-disable-next-line no-script-url -- being refused is the point
 			'javascript:alert(1)',
 		]) {
-			expect(isExternalSetUrl(address)).toBe(false)
+			expect(isCharacterSetUrl(address)).toBe(false)
 		}
 	})
 
 	it('refuses an address too long to be one', () => {
 		expect(
-			isExternalSetUrl(
-				'https://example.com/' + 'a'.repeat(externalSetLimits.url)
+			isCharacterSetUrl(
+				'https://example.com/' + 'a'.repeat(characterSetLimits.url)
 			)
 		).toBe(false)
 	})
 })
 
-describe('fetchExternalCharacterSet', () => {
+describe('fetchCharacterSet', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals()
 	})
@@ -217,7 +217,7 @@ describe('fetchExternalCharacterSet', () => {
 
 	it('goes and gets a set', async () => {
 		serving(JSON.stringify(good()))
-		const { set, problems } = await fetchExternalCharacterSet(source.href)
+		const { set, problems } = await fetchCharacterSet(source.href)
 		expect(problems).toEqual([])
 		expect(set?.characters).toHaveLength(2)
 		// Relative paths resolve against where it was fetched from, not against
@@ -231,7 +231,7 @@ describe('fetchExternalCharacterSet', () => {
 		const fetching = vi.fn()
 		vi.stubGlobal('fetch', fetching)
 		for (const address of ['http://example.com/s.json', 'file:///etc/passwd']) {
-			expect((await fetchExternalCharacterSet(address)).set).toBeUndefined()
+			expect((await fetchCharacterSet(address)).set).toBeUndefined()
 		}
 		// Not merely refused afterwards: never asked for. Whatever is on the
 		// other end of that address is not something this room may touch.
@@ -240,9 +240,7 @@ describe('fetchExternalCharacterSet', () => {
 
 	it('says so when the file is not there', async () => {
 		serving('not found', { status: 404 })
-		expect(
-			(await fetchExternalCharacterSet(source.href)).problems[0]
-		).toContain('404')
+		expect((await fetchCharacterSet(source.href)).problems[0]).toContain('404')
 	})
 
 	it('reads a roster embedded in the page it was linked from', async () => {
@@ -253,23 +251,21 @@ describe('fetchExternalCharacterSet', () => {
 			<script type="${embeddedSetType}">${JSON.stringify(good())}</script>
 			<a href="https://masq.kbn.one/new?set=...">このキャラセットでマスカレードする</a>`
 		)
-		const { set, problems } = await fetchExternalCharacterSet(source.href)
+		const { set, problems } = await fetchCharacterSet(source.href)
 		expect(problems).toEqual([])
 		expect(set?.characters).toHaveLength(2)
 	})
 
 	it('says what is missing from a page with no roster in it', async () => {
 		serving('<!doctype html><title>oops</title><script>alert(1)</script>')
-		expect(
-			(await fetchExternalCharacterSet(source.href)).problems[0]
-		).toContain(embeddedSetType)
+		expect((await fetchCharacterSet(source.href)).problems[0]).toContain(
+			embeddedSetType
+		)
 	})
 
 	it('says so when the file is JSON that does not parse', async () => {
 		serving('{"name": "うち",,,}')
-		expect(
-			(await fetchExternalCharacterSet(source.href)).problems[0]
-		).toContain('JSON')
+		expect((await fetchCharacterSet(source.href)).problems[0]).toContain('JSON')
 	})
 
 	it('stops reading a body that will not stop', async () => {
@@ -290,7 +286,7 @@ describe('fetchExternalCharacterSet', () => {
 					)
 			)
 		)
-		const { set, problems } = await fetchExternalCharacterSet(source.href)
+		const { set, problems } = await fetchCharacterSet(source.href)
 		expect(set).toBeUndefined()
 		expect(problems[0]).toContain('大きすぎます')
 	})
@@ -309,7 +305,7 @@ describe('fetchExternalCharacterSet', () => {
 				throw new Error('unreachable')
 			})
 		)
-		const { problems } = await fetchExternalCharacterSet(source.href)
+		const { problems } = await fetchCharacterSet(source.href)
 		expect(problems[0]).toContain('タイムアウト')
 	}, 10_000)
 
@@ -320,8 +316,6 @@ describe('fetchExternalCharacterSet', () => {
 				throw new TypeError('fetch failed')
 			})
 		)
-		expect(
-			(await fetchExternalCharacterSet(source.href)).problems[0]
-		).toBeTruthy()
+		expect((await fetchCharacterSet(source.href)).problems[0]).toBeTruthy()
 	})
 })

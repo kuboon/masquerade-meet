@@ -45,3 +45,14 @@ test('hands an unknown path to the app rather than answering it', async ({
 	const response = await request.get('/_headers')
 	expect(response.headers()['content-type']).toContain('text/html')
 })
+
+test("lets somebody else's page import the pitch shifter", async ({
+	request,
+}) => {
+	// An author previewing the voices in their own character set imports this
+	// module from their own origin, and a cross-origin module import without
+	// this header fails with nothing in the console worth reading.
+	const response = await request.get('/voice/SignalsmithStretch.mjs')
+	expect(response.status()).toBe(200)
+	expect(response.headers()['access-control-allow-origin']).toBe('*')
+})

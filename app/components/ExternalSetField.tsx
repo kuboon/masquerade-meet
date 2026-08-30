@@ -1,3 +1,4 @@
+import { Link } from '@remix-run/react'
 import { Input } from './Input'
 import { Label } from './Label'
 
@@ -36,6 +37,13 @@ export function ExternalSetField() {
 					を指定します（上の選択より優先されます）。
 					キャラクターの絵は参照先のサイトから読み込まれるので、参加者がそのサイトにアクセスしたことが相手に伝わります。
 					信頼できる配布元だけを指定してください。
+				</p>
+				<p className="text-xs text-zinc-500 dark:text-zinc-400">
+					自分で作ったセットなら、
+					<Link to="/character-set" className="underline">
+						キャラセットを確かめる
+					</Link>
+					で中身と声を先に確認できます。
 				</p>
 			</div>
 		</details>

@@ -16,10 +16,6 @@ import {
 	isCharacterSetId,
 } from '~/utils/characterSets'
 import type { CharacterSet } from '~/utils/characters'
-import {
-	fetchExternalCharacterSet,
-	isExternalSetUrl,
-} from '~/utils/externalCharacterSet'
 import getUsername from '~/utils/getUsername.server'
 import {
 	assignCharacters,
@@ -36,6 +32,10 @@ import {
 	maxRoleLength,
 	parseRoleDeck,
 } from '~/utils/roles'
+import {
+	fetchCharacterSet,
+	isCharacterSetUrl,
+} from '../../packages/character-set/check.ts'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -489,14 +489,14 @@ export class ChatRoom extends Server<Env> {
 			? new URL(ctx.request.url).searchParams.get('set')
 			: null
 
-		if (isExternalSetUrl(requested)) {
+		if (isCharacterSetUrl(requested)) {
 			// The one blocking call in this room's life, and the reason it only
 			// happens here: fetched once, at the moment the room is opened, by
 			// the only connection that has a say. Everybody after this reads the
 			// copy. If the site is down or the file is wrong the room still
 			// opens — with our own faces, and with the reason on the wire so the
 			// person who chose it is not left wondering.
-			const { set, problems } = await fetchExternalCharacterSet(requested)
+			const { set, problems } = await fetchCharacterSet(requested)
 			if (set !== undefined) {
 				await this.ctx.storage.put(EXTERNAL_SET_KEY, set)
 				await this.ctx.storage.put(CHARACTER_SET_KEY, set.id)

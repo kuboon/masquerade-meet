@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { VoiceParams } from '~/utils/characters'
 import {
 	applyVoiceParams,
-	createVoiceGraph,
+	createAppVoiceGraph,
 	disposeVoiceGraph,
 	type VoiceGraph,
 } from '~/utils/voiceChanger'
@@ -46,7 +46,7 @@ export default function useVoicePreview(voice: VoiceParams) {
 			return graphRef.current
 		}
 		const context = new AudioContext()
-		const graph = await createVoiceGraph(context)
+		const graph = await createAppVoiceGraph(context)
 		graph.output.connect(context.destination)
 		graphRef.current = graph
 		return graph

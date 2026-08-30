@@ -6,3 +6,11 @@
 # stable and the files behind them are not.
 /build/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The pitch shifter, which a page on somebody else's site has to be able to
+# import in order to preview the voices in a character set it is publishing.
+# A cross-origin ES module import needs this header or it fails silently. It
+# is a copy of an MIT library and nothing about it is ours to protect; the
+# only thing being given away is bandwidth.
+/voice/*
+  Access-Control-Allow-Origin: *

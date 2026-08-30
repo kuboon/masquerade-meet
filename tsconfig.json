@@ -13,6 +13,10 @@
 		// way so nobody who never puts a mask on pays for it.
 		"module": "ESNext",
 		"moduleResolution": "Bundler",
+		// The character-set contract lives in `packages/`, which is published
+		// to JSR and therefore writes its own imports Deno-style, extension and
+		// all. Nothing is emitted from here, so nothing has to rewrite them.
+		"allowImportingTsExtensions": true,
 		"resolveJsonModule": true,
 		"target": "ES2019",
 		"strict": true,

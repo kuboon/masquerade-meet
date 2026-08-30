@@ -1,0 +1,16 @@
+{
+	"name": "@kuboon/masquerade-character-set",
+	"version": "0.1.0",
+	"license": "Apache-2.0",
+	"exports": {
+		".": "./mod.ts",
+		"./check": "./check.ts",
+		"./voice": "./voice.ts",
+		"./graph": "./graph.ts",
+		"./preview": "./preview.ts",
+		"./cli": "./cli.ts"
+	},
+	"publish": {
+		"exclude": ["**/*.test.ts"]
+	}
+}

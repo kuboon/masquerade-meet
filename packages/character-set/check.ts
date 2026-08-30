@@ -1,48 +1,43 @@
-import {
-	isDisguised,
-	VOICE_RANGE,
-	type Character,
-	type CharacterSet,
-	type VoiceParams,
-} from './characters'
-
 /**
- * A roster somebody else wrote, read off the open web.
+ * Whether a character set is one a room can wear, and if not, why not.
  *
- * A page anywhere can publish a JSON file describing its own characters and
- * link to `masq.kbn.one/new?set=<that url>`. The room fetches it once, when
- * it is created, checks it here and then keeps its own copy for good — so a
- * meeting does not end because the site it borrowed its faces from went down
- * halfway through, and so nobody can swap the faces out from under a meeting
- * by editing the file afterwards.
+ * The rules live here rather than in the app so that there is one copy of
+ * them: this module is what the room runs when somebody links to your set,
+ * and what the CLI runs when you check it before publishing. If the two ever
+ * disagreed, the one that mattered would be the one you could not run.
  *
- * Everything in this module is about not trusting that file. It arrives as
- * whatever bytes a stranger felt like serving, and every one of the app's
- * promises has to survive it:
+ * Nothing here trusts its input. A set arrives as whatever bytes a stranger
+ * felt like serving, and every promise a masquerade makes has to survive it:
  *
  *  - **Nobody's own voice goes out.** A set whose voices are all zeroes would
- *    put fifteen people on a call in their own voices believing they were
- *    disguised. That is the one failure this app must never have, so a
- *    character whose voice is not a disguise is not a character and the whole
- *    set is refused.
- *  - **The room stays small.** The roster is broadcast, stored in a Durable
- *    Object and held in every participant's memory, so it is bounded in
- *    every direction: bytes, characters, and the length of each string.
+ *    put a roomful of people on a call in their own voices believing they
+ *    were disguised. That is the one failure a masquerade must never have,
+ *    so a character whose voice is not a disguise is not a character, and the
+ *    whole set is refused.
+ *  - **The room stays small.** The roster is broadcast, stored, and held in
+ *    every participant's memory, so it is bounded in every direction: bytes,
+ *    characters, and the length of each string.
  *  - **What is on screen is a picture and nothing else.** Images are plain
  *    https URLs handed to `<img src>`; no data URIs, no other scheme.
  *
- * The document may be a JSON file or the page itself, with the roster in a
+ * The document may be a JSON file or the page itself, with the set in a
  * `<script type="application/masquerade-character-set+json">` — so an author
  * who wants to publish one HTML file and nothing else can point the button at
  * the page it is on.
- *
- * The checks are duplicated in the JSR package third parties build their page
- * with, so an author sees these messages before publishing rather than after.
- * If a rule changes here it changes there.
  */
 
+import type { Character, CharacterSet, VoiceParams } from './mod.ts'
+import { isDisguised, VOICE_RANGE } from './voice.ts'
+
+/**
+ * Re-exported so that checking a set and knowing what its numbers mean are
+ * one import: the disguise rule is the thing most likely to refuse a set,
+ * and `VOICE_RANGE` is how anybody reads a `voice` back in semitones.
+ */
+export { isDisguised, VOICE_RANGE }
+
 /** Everything with a size, in one place, because every one of them is a limit. */
-export const externalSetLimits = {
+export const characterSetLimits = {
 	/** the whole JSON document */
 	bytes: 64 * 1024,
 	/** long enough for a slow origin, short enough not to hang a room's first connection */
@@ -63,12 +58,12 @@ const idPattern = /^[A-Za-z0-9][A-Za-z0-9_-]*$/
 
 type Problems = string[]
 
-export type ExternalSetResult =
+export type CheckResult =
 	| { set: CharacterSet; problems: [] }
 	| { set: undefined; problems: [string, ...string[]] }
 
 /**
- * The document, checked and turned into a roster this app can wear.
+ * The document, checked and turned into a roster a room can wear.
  *
  * Every problem is collected rather than the first one thrown, because the
  * other end of this is somebody editing a JSON file: being told about one
@@ -79,12 +74,9 @@ export type ExternalSetResult =
  * next to their JSON), and it becomes the set's id, which is how a room
  * names a roster that has no name in any registry.
  */
-export function parseExternalCharacterSet(
-	input: unknown,
-	source: URL
-): ExternalSetResult {
+export function checkCharacterSet(input: unknown, source: URL): CheckResult {
 	const problems: Problems = []
-	const fail = (): ExternalSetResult => ({
+	const fail = (): CheckResult => ({
 		set: undefined,
 		problems: problems as [string, ...string[]],
 	})
@@ -95,11 +87,12 @@ export function parseExternalCharacterSet(
 	}
 
 	const name =
-		text(input.name, 'name', externalSetLimits.setName, problems, {
+		text(input.name, 'name', characterSetLimits.setName, problems, {
 			required: true,
 		}) ?? ''
 	const tagline =
-		text(input.tagline, 'tagline', externalSetLimits.setTagline, problems) ?? ''
+		text(input.tagline, 'tagline', characterSetLimits.setTagline, problems) ??
+		''
 	const banner =
 		input.banner === undefined
 			? undefined
@@ -110,21 +103,21 @@ export function parseExternalCharacterSet(
 		problems.push('characters が配列ではありません')
 		return fail()
 	}
-	if (raw.length < externalSetLimits.minCharacters) {
+	if (raw.length < characterSetLimits.minCharacters) {
 		problems.push(
-			`characters が ${raw.length} 件しかありません（${externalSetLimits.minCharacters} 件以上必要です）`
+			`characters が ${raw.length} 件しかありません（${characterSetLimits.minCharacters} 件以上必要です）`
 		)
 	}
-	if (raw.length > externalSetLimits.maxCharacters) {
+	if (raw.length > characterSetLimits.maxCharacters) {
 		problems.push(
-			`characters が多すぎます（${externalSetLimits.maxCharacters} 件まで）`
+			`characters が多すぎます（${characterSetLimits.maxCharacters} 件まで）`
 		)
 	}
 
 	const characters: Character[] = []
 	const seen = new Set<string>()
 	for (const [index, entry] of raw
-		.slice(0, externalSetLimits.maxCharacters)
+		.slice(0, characterSetLimits.maxCharacters)
 		.entries()) {
 		const character = parseCharacter(
 			entry,
@@ -175,7 +168,7 @@ function parseCharacter(
 	const id = text(
 		input.id,
 		`${at}.id`,
-		externalSetLimits.characterId,
+		characterSetLimits.characterId,
 		problems,
 		{
 			required: true,
@@ -189,17 +182,17 @@ function parseCharacter(
 	const name = text(
 		input.name,
 		`${at}.name`,
-		externalSetLimits.characterName,
+		characterSetLimits.characterName,
 		problems,
 		{ required: true }
 	)
 	const emoji =
-		text(input.emoji, `${at}.emoji`, externalSetLimits.emoji, problems) ?? '🎭'
+		text(input.emoji, `${at}.emoji`, characterSetLimits.emoji, problems) ?? '🎭'
 	const tagline =
 		text(
 			input.tagline,
 			`${at}.tagline`,
-			externalSetLimits.characterTagline,
+			characterSetLimits.characterTagline,
 			problems
 		) ?? ''
 	const image = url(input.image, `${at}.image`, source, problems)
@@ -240,7 +233,7 @@ function parseVoice(
 	const throat = number(input.throat, `${at}.throat`, -1, 1, problems) ?? 0
 	if (problems.length > before) return undefined
 
-	const voice = {
+	const voice: VoiceParams = {
 		size: size!,
 		weight: weight!,
 		nasal: nasal!,
@@ -328,7 +321,7 @@ function url(
 	source: URL,
 	problems: Problems
 ): string | undefined {
-	const raw = text(value, at, externalSetLimits.url, problems, {
+	const raw = text(value, at, characterSetLimits.url, problems, {
 		required: true,
 	})
 	if (raw === undefined) return undefined
@@ -352,8 +345,8 @@ function url(
  * Only https, and only an address — the room is about to fetch this, and the
  * one thing worth being strict about at the door is what it is allowed to be.
  */
-export function isExternalSetUrl(value: unknown): value is string {
-	if (typeof value !== 'string' || value.length > externalSetLimits.url) {
+export function isCharacterSetUrl(value: unknown): value is string {
+	if (typeof value !== 'string' || value.length > characterSetLimits.url) {
 		return false
 	}
 	try {
@@ -371,28 +364,26 @@ export function isExternalSetUrl(value: unknown): value is string {
  * then says nothing, and a byte count read off the stream rather than off
  * the `Content-Length` header, which is a claim rather than a fact.
  */
-export async function fetchExternalCharacterSet(
-	address: string
-): Promise<ExternalSetResult> {
-	const fail = (problem: string): ExternalSetResult => ({
+export async function fetchCharacterSet(address: string): Promise<CheckResult> {
+	const fail = (problem: string): CheckResult => ({
 		set: undefined,
 		problems: [problem],
 	})
-	if (!isExternalSetUrl(address)) return fail('キャラセットの URL が不正です')
+	if (!isCharacterSetUrl(address)) return fail('キャラセットの URL が不正です')
 	const source = new URL(address)
 
 	let body: string | undefined
 	try {
 		const response = await fetch(source.href, {
 			headers: { accept: 'application/json' },
-			signal: AbortSignal.timeout(externalSetLimits.timeoutMs),
+			signal: AbortSignal.timeout(characterSetLimits.timeoutMs),
 		})
 		if (!response.ok) {
 			return fail(
 				`キャラセットを取得できませんでした（HTTP ${response.status}）`
 			)
 		}
-		body = await readCapped(response, externalSetLimits.bytes)
+		body = await readCapped(response, characterSetLimits.bytes)
 	} catch (error) {
 		return fail(
 			error instanceof Error && error.name === 'TimeoutError'
@@ -412,7 +403,7 @@ export async function fetchExternalCharacterSet(
 	} catch {
 		return fail('キャラセットが JSON として読めません')
 	}
-	return parseExternalCharacterSet(document, source)
+	return checkCharacterSet(document, source)
 }
 
 /**
