@@ -1,7 +1,12 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { isDisguised, VOICE_RANGE } from '~/utils/characters'
+import {
+	isDisguised,
+	voice,
+	VOICE_RANGE,
+	type CharacterSet,
+} from '~/utils/characters'
 import { minimumParticipants } from '~/utils/masquerade'
 import { toEngineParams } from '~/utils/voiceChanger'
 import {
@@ -9,7 +14,9 @@ import {
 	defaultCharacterSetId,
 	getCharacter,
 	getCharacterSet,
+	isBuiltInSet,
 	isCharacterSetId,
+	roomCharacterSet,
 } from './index'
 
 describe('the character set registry', () => {
@@ -155,3 +162,62 @@ for (const set of characterSets) {
 		})
 	})
 }
+
+describe('a roster from somewhere else', () => {
+	const borrowed: CharacterSet = {
+		id: 'https://example.com/set.json',
+		name: 'よその一座',
+		tagline: 'よそから来た',
+		banner: 'https://example.com/banner.png',
+		characters: [
+			{
+				id: 'bear',
+				name: 'よそのくま',
+				emoji: '🐻',
+				tagline: '',
+				image: 'https://example.com/bear.png',
+				voice: voice(-0.8, 0, 0),
+			},
+		],
+	}
+
+	it('resolves its characters, which are in no registry', () => {
+		expect(getCharacter(borrowed, 'bear')?.name).toBe('よそのくま')
+	})
+
+	it('is not answered out of a built-in roster that shares an id', () => {
+		// The dangerous version of this bug is silent: `bear` exists in the
+		// animals set too, so a lookup by id alone would hand back くまごろう
+		// and everybody would see the wrong face with no error anywhere.
+		const impostor = { ...borrowed, id: defaultCharacterSetId }
+		expect(getCharacter(impostor, 'bear')?.name).toBe('よそのくま')
+	})
+
+	it('knows it is not one of ours', () => {
+		expect(isBuiltInSet(borrowed)).toBe(false)
+		expect(isBuiltInSet(getCharacterSet(defaultCharacterSetId))).toBe(true)
+	})
+
+	it('is worn only by the room that named it', () => {
+		expect(roomCharacterSet(borrowed.id, borrowed)).toBe(borrowed)
+	})
+
+	it('is ignored when the room named something else', () => {
+		// A set delivered for one room must not be worn by another, and the
+		// fallback is a real roster rather than nothing: a room with no faces
+		// is a room where nobody can hide.
+		expect(roomCharacterSet(defaultCharacterSetId, borrowed).id).toBe(
+			defaultCharacterSetId
+		)
+		expect(
+			roomCharacterSet('https://elsewhere.example/set.json', borrowed).id
+		).toBe(defaultCharacterSetId)
+	})
+
+	it('leaves a room with no delivery on the built-in set it named', () => {
+		expect(roomCharacterSet('circus', undefined).id).toBe('circus')
+		expect(roomCharacterSet(undefined, undefined).id).toBe(
+			defaultCharacterSetId
+		)
+	})
+})

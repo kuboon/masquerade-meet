@@ -52,5 +52,34 @@ export function getCharacter(
 	set: CharacterSet,
 	id?: string
 ): Character | undefined {
-	return id === undefined ? undefined : charactersBySet.get(set.id)?.get(id)
+	if (id === undefined) return undefined
+	// The index is only good for the sets it was built from. A room can be
+	// wearing a roster fetched from somebody else's site, and one of those
+	// answering to a built-in id must not be served out of the built-in
+	// roster of that name — hence identity rather than the id alone.
+	if (setsById.get(set.id) === set) return charactersBySet.get(set.id)?.get(id)
+	return set.characters.find((character) => character.id === id)
+}
+
+/**
+ * The roster a room is wearing, given what the room said and what it sent.
+ *
+ * A borrowed roster arrives on its own message and answers to the address it
+ * was fetched from, so this is not "prefer the delivered one": it is the room
+ * naming a roster and this client checking it holds that one. A `delivered`
+ * that does not match is from some other room or some other moment and is
+ * ignored, which leaves the built-in fallback — never nothing.
+ */
+export function roomCharacterSet(
+	characterSetId: string | undefined,
+	delivered: CharacterSet | undefined
+): CharacterSet {
+	return delivered !== undefined && delivered.id === characterSetId
+		? delivered
+		: getCharacterSet(characterSetId)
+}
+
+/** Whether this roster is one of ours, or one a room fetched from elsewhere. */
+export function isBuiltInSet(set: CharacterSet): boolean {
+	return setsById.get(set.id) === set
 }

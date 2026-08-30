@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ClientMessage, RoomState, ServerMessage } from '~/types/Messages'
 import { defaultCharacterSetId } from '~/utils/characterSets'
+import type { CharacterSet } from '~/utils/characters'
 import {
 	rememberCharacter,
 	rememberedCharacter,
@@ -83,6 +84,13 @@ export default function useRoom({
 		}
 	}, [roomName, characterSetId])
 
+	// The roster this room borrowed from somebody else's site, if it did.
+	// Sent to this connection once, ahead of the first room state, and kept
+	// out of the room state for the same reason the role card is: it does not
+	// belong in something rebroadcast every fifteen seconds.
+	const [externalCharacterSet, setExternalCharacterSet] =
+		useState<CharacterSet>()
+
 	// The character somebody reached for a moment too late, until they pick
 	// another. Kept here rather than in the room state because it happened to
 	// one person, not to the room.
@@ -133,6 +141,9 @@ export default function useRoom({
 					// Only the loser of a race hears this, and only they need to:
 					// everybody else watches the character go in the room state.
 					setLostCharacter(message.characterId)
+					break
+				case 'characterSet':
+					setExternalCharacterSet(message.set)
 					break
 				case 'roleCard':
 					// Replaced wholesale rather than merged: an empty hand after a
@@ -206,6 +217,12 @@ export default function useRoom({
 		websocket,
 		roomState,
 		send,
+		/**
+		 * The roster the room borrowed, if it borrowed one. Undefined for a
+		 * room wearing one of the built-in sets — every client already has
+		 * those, and resolving the id is enough.
+		 */
+		externalCharacterSet,
 		lostCharacter,
 		clearLostCharacter: useCallback(() => setLostCharacter(undefined), []),
 		/** the card this connection is holding, if the room has dealt any */

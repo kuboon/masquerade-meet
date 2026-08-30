@@ -3,7 +3,9 @@ import { nanoid } from 'nanoid'
 import { Button } from '~/components/Button'
 import { CharacterSetChooser } from '~/components/CharacterSetChooser'
 import { Disclaimer } from '~/components/Disclaimer'
+import { ExternalSetField } from '~/components/ExternalSetField'
 import { characterSets } from '~/utils/characterSets'
+import { chosenSet } from '~/utils/chosenSet'
 
 export default function Index() {
 	const navigate = useNavigate()
@@ -42,15 +44,16 @@ export default function Index() {
 						// We shouldn't need a whole server visit to start a new room,
 						// so let's just do a redirect here
 						e.preventDefault()
-						const set = new FormData(e.currentTarget).get('set')
+						const set = chosenSet(new FormData(e.currentTarget))
 						navigate(
-							`/${nanoid(8)}` + (typeof set === 'string' ? `?set=${set}` : '')
+							`/${nanoid(8)}` + (set ? `?set=${encodeURIComponent(set)}` : '')
 						)
 						// if someone submits this before the js has loaded then the
 						// browser posts to /new, which does the same redirect server side
 					}}
 				>
 					{characterSets.length > 1 && <CharacterSetChooser />}
+					<ExternalSetField />
 					<Button className="text-sm" type="submit">
 						ルームを作る
 					</Button>

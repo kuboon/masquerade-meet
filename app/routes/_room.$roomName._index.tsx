@@ -67,6 +67,8 @@ export default function Lobby() {
 	const {
 		character,
 		characterSet,
+		characterSetIsBorrowed,
+		characterSetProblem,
 		participants,
 		canStart,
 		isHost,
@@ -160,6 +162,20 @@ export default function Lobby() {
 						{participants.length}人が待機中
 					</p>
 				</div>
+
+				{characterSetProblem && (
+					<p className="rounded-md bg-orange-100 p-3 text-sm text-zinc-900 dark:bg-orange-900 dark:text-zinc-100">
+						指定された外部キャラセットを読み込めませんでした（
+						{characterSetProblem}）。標準のキャラクターで進みます。
+					</p>
+				)}
+				{characterSetIsBorrowed && (
+					<p className="text-xs text-zinc-500 dark:text-zinc-400">
+						このルームは外部のキャラクターセット「{characterSet.name}」（
+						{setHost(characterSet.id)}
+						）を使っています。絵はそのサイトから読み込まれます。
+					</p>
+				)}
 
 				<div className="flex items-center gap-4 rounded-xl bg-zinc-100 p-4 dark:bg-zinc-800">
 					<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg">
@@ -373,4 +389,18 @@ export default function Lobby() {
 			<Disclaimer className="pt-2" />
 		</div>
 	)
+}
+
+/**
+ * The site a borrowed roster came from, for saying so on screen.
+ *
+ * The whole address is the set's id and can be long enough to wrap twice;
+ * what somebody actually needs to see is whose site it is.
+ */
+function setHost(id: string): string {
+	try {
+		return new URL(id).host
+	} catch {
+		return id
+	}
 }

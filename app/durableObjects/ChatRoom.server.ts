@@ -16,6 +16,10 @@ import {
 	isCharacterSetId,
 } from '~/utils/characterSets'
 import type { CharacterSet } from '~/utils/characters'
+import {
+	fetchExternalCharacterSet,
+	isExternalSetUrl,
+} from '~/utils/externalCharacterSet'
 import getUsername from '~/utils/getUsername.server'
 import {
 	assignCharacters,
@@ -62,6 +66,16 @@ const PHASE_KEY = 'masquerade:phase'
 const REVEAL_AT_KEY = 'masquerade:revealAt'
 const HOST_KEY = 'masquerade:hostId'
 const CHARACTER_SET_KEY = 'masquerade:characterSetId'
+/**
+ * The whole roster, when this room borrowed one from somebody else's site.
+ *
+ * Kept rather than re-fetched because a meeting must not depend on a stranger
+ * staying up, and must not change under way if they edit the file. The pin in
+ * CHARACTER_SET_KEY is the address it came from, and this is what came back.
+ */
+const EXTERNAL_SET_KEY = 'masquerade:externalSet'
+/** Why the borrowed roster is not the one in use, if it is not. */
+const CHARACTER_SET_PROBLEM_KEY = 'masquerade:characterSetProblem'
 const SEATS_KEY = 'masquerade:seats'
 const START_AT_KEY = 'masquerade:startAt'
 const ROLE_DECK_KEY = 'masquerade:roleDeck'
@@ -165,7 +179,10 @@ export class ChatRoom extends Server<Env> {
 		// rather than refused.
 		const username = (await getUsername(ctx.request)) ?? ''
 
-		const characterSet = getCharacterSet(await this.resolveCharacterSetId(ctx))
+		const characterSet = await this.resolveCharacterSet(ctx)
+		// Before any room state, so that a client is never holding a set id it
+		// has no roster for. Same socket, so the order is the order it arrives.
+		this.sendCharacterSet(connection, characterSet)
 
 		const joinedAt = await this.firstSeenAt(connection.id)
 
@@ -349,6 +366,9 @@ export class ChatRoom extends Server<Env> {
 			characterSetId:
 				(await this.ctx.storage.get<string>(CHARACTER_SET_KEY)) ??
 				defaultCharacterSetId,
+			characterSetProblem: await this.ctx.storage.get<string>(
+				CHARACTER_SET_PROBLEM_KEY
+			),
 			seats: await this.getSeats(),
 			startAt,
 			roleDeck: await this.getRoleDeck(),
@@ -383,9 +403,7 @@ export class ChatRoom extends Server<Env> {
 		const meetingId = await this.getMeetingId()
 		const everyone = [...(await this.getUsers()).values()]
 		const joining = everyone.filter((user) => user.realName !== '')
-		const characterSet = getCharacterSet(
-			await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
-		)
+		const characterSet = await this.characterSet()
 
 		const assigned = assignCharacters(
 			joining,
@@ -460,17 +478,76 @@ export class ChatRoom extends Server<Env> {
 	 * everyone's faces out from under them — including in a room that predates
 	 * this field and therefore has nothing pinned.
 	 */
-	private async resolveCharacterSetId(ctx: ConnectionContext): Promise<string> {
+	private async resolveCharacterSet(
+		ctx: ConnectionContext
+	): Promise<CharacterSet> {
 		const pinned = await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
-		if (pinned !== undefined) return pinned
+		if (pinned !== undefined) return this.characterSet()
 
 		const firstThroughTheDoor = (await this.getUsers()).size === 0
 		const requested = firstThroughTheDoor
 			? new URL(ctx.request.url).searchParams.get('set')
 			: null
+
+		if (isExternalSetUrl(requested)) {
+			// The one blocking call in this room's life, and the reason it only
+			// happens here: fetched once, at the moment the room is opened, by
+			// the only connection that has a say. Everybody after this reads the
+			// copy. If the site is down or the file is wrong the room still
+			// opens — with our own faces, and with the reason on the wire so the
+			// person who chose it is not left wondering.
+			const { set, problems } = await fetchExternalCharacterSet(requested)
+			if (set !== undefined) {
+				await this.ctx.storage.put(EXTERNAL_SET_KEY, set)
+				await this.ctx.storage.put(CHARACTER_SET_KEY, set.id)
+				log({ eventName: 'externalCharacterSetLoaded', source: set.id })
+				return set
+			}
+			await this.ctx.storage.put(CHARACTER_SET_PROBLEM_KEY, problems[0])
+			log({
+				eventName: 'externalCharacterSetRefused',
+				source: requested,
+				problem: problems[0],
+			})
+		}
+
 		const id = isCharacterSetId(requested) ? requested : defaultCharacterSetId
 		await this.ctx.storage.put(CHARACTER_SET_KEY, id)
-		return id
+		return getCharacterSet(id)
+	}
+
+	/**
+	 * The roster this room is wearing, whoever wrote it.
+	 *
+	 * A built-in set is pinned by its registry id; a borrowed one is pinned by
+	 * the address it was fetched from, and the roster itself sits beside it.
+	 * The identity check is not ceremony: a set that answered to `animals`
+	 * would otherwise be served out of the built-in roster of that name.
+	 */
+	private async characterSet(): Promise<CharacterSet> {
+		const pinned = await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
+		if (pinned === undefined || isCharacterSetId(pinned)) {
+			return getCharacterSet(pinned)
+		}
+		const external = await this.ctx.storage.get<CharacterSet>(EXTERNAL_SET_KEY)
+		return external?.id === pinned ? external : getCharacterSet(undefined)
+	}
+
+	/**
+	 * Hands one connection the roster the room borrowed.
+	 *
+	 * Only when it is borrowed: a built-in set is already in the client's
+	 * bundle, and re-sending it would put a few kilobytes on the wire for
+	 * something every browser already has. Sent per connection rather than
+	 * broadcast in the room state, which goes out again every fifteen seconds
+	 * — a roster that rode along with it would be paid for over and over for
+	 * as long as the meeting lasted.
+	 */
+	private sendCharacterSet(connection: Connection, set: CharacterSet) {
+		if (isCharacterSetId(set.id)) return
+		connection.send(
+			JSON.stringify({ type: 'characterSet', set } satisfies ServerMessage)
+		)
 	}
 
 	/**
@@ -687,7 +764,7 @@ export class ChatRoom extends Server<Env> {
 			(await this.ctx.storage.get<string>('ai:trackName')) ?? undefined
 		await this.ensureHost()
 		const masquerade = await this.getMasqueradeState()
-		const characterSet = getCharacterSet(masquerade.characterSetId)
+		const characterSet = await this.characterSet()
 		const roomState = {
 			type: 'roomState',
 			state: {
@@ -826,9 +903,7 @@ export class ChatRoom extends Server<Env> {
 					// lets them in, so this is where that is put right.
 					const { phase: nowPhase } = await this.getMasqueradeState()
 					if (name !== '' && nowPhase !== 'lobby') {
-						const set = getCharacterSet(
-							await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
-						)
+						const set = await this.characterSet()
 						const taken = await this.getTakenCharacterIds(connection.id)
 						if (!stored.characterId || taken.has(stored.characterId)) {
 							const free = await this.pickCharacterPreference(set)
@@ -849,9 +924,7 @@ export class ChatRoom extends Server<Env> {
 						`session-${connection.id}`
 					)
 					if (!stored) break
-					const characterSet = getCharacterSet(
-						await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
-					)
+					const characterSet = await this.characterSet()
 					const character = getCharacter(characterSet, data.characterId)
 					if (!character) break
 
@@ -956,9 +1029,7 @@ export class ChatRoom extends Server<Env> {
 					}
 
 					const users = [...(await this.getUsers()).values()]
-					const characterSet = getCharacterSet(
-						await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
-					)
+					const characterSet = await this.characterSet()
 					// A masquerade the host attends alone is a person in a mask in
 					// an empty room, and one with more people than faces cannot be
 					// dealt. Nobody is waited on beyond that.
@@ -1004,9 +1075,7 @@ export class ChatRoom extends Server<Env> {
 					// everybody now knows who was the bear. Whoever does not
 					// bother re-picking gets a face nobody can place instead.
 					const users = [...(await this.getUsers()).values()]
-					const characterSet = getCharacterSet(
-						await this.ctx.storage.get<string>(CHARACTER_SET_KEY)
-					)
+					const characterSet = await this.characterSet()
 					const dealt = assignCharacters(
 						users.map(({ id }) => ({ id })),
 						characterSet.characters.map((c) => c.id)

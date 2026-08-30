@@ -1,5 +1,6 @@
 import { type ApiHistoryEntry } from 'partytracks/client'
 import type { TrackObject } from '~/utils/callsTypes'
+import type { CharacterSet } from '~/utils/characters'
 
 /**
  * lobby      - everyone is picking a character and getting ready
@@ -94,6 +95,15 @@ export type MasqueradeState = {
 	 * a Durable Object that predates this field.
 	 */
 	characterSetId: string
+	/**
+	 * Why this room is not wearing the set it was opened with.
+	 *
+	 * Only ever set when the room was pointed at somebody else's roster and
+	 * could not use it — the site was down, or the file did not pass. The room
+	 * carries on with the built-in faces; this is here so the person who chose
+	 * it is told, rather than quietly handed something else.
+	 */
+	characterSetProblem?: string
 	/**
 	 * Where everyone sits, by connection id, decided once when the meeting
 	 * starts and the same for everybody — a tile that moves is a tile you have
@@ -202,6 +212,25 @@ export type ServerMessage =
 			 * who dealt it and has to run the game from it.
 			 */
 			deal?: Record<string, string>
+	  }
+	| {
+			/**
+			 * The roster this room borrowed from somebody else's site, sent to
+			 * each connection as it arrives and never again.
+			 *
+			 * Not part of the room state, which goes out to everybody every
+			 * fifteen seconds: a roster in there would be paid for on every
+			 * heartbeat for the length of the meeting. It arrives ahead of the
+			 * first room state on the same socket, so `masquerade.characterSetId`
+			 * never names a roster the client does not yet have.
+			 *
+			 * Absent entirely for a room using one of the built-in sets, whose
+			 * roster is already in the client's bundle. `set.id` is the address
+			 * it was fetched from, and matching it against `characterSetId` is
+			 * what tells the client this is the set the room means.
+			 */
+			type: 'characterSet'
+			set: CharacterSet
 	  }
 	| {
 			type: 'chatMessage'
