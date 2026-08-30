@@ -1,3 +1,7 @@
+import {
+	fetchCharacterSet,
+	isCharacterSetUrl,
+} from '@kuboon/masquerade-character-set/check'
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
 import { Form, useLoaderData, useNavigation } from '@remix-run/react'
@@ -10,10 +14,6 @@ import { Toggle } from '~/components/Toggle'
 import useVoicePreview, { RECORD_SECONDS } from '~/hooks/useVoicePreview'
 import type { CharacterSet } from '~/utils/characters'
 import { cn } from '~/utils/style'
-import {
-	fetchCharacterSet,
-	isCharacterSetUrl,
-} from '../../packages/character-set/check.ts'
 
 export const meta: MetaFunction = () => [{ title: 'キャラセットを確かめる' }]
 

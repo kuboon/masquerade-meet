@@ -1,3 +1,7 @@
+import {
+	fetchCharacterSet,
+	isCharacterSetUrl,
+} from '@kuboon/masquerade-character-set/check'
 import type { Env } from '~/types/Env'
 import type {
 	ClientMessage,
@@ -32,10 +36,6 @@ import {
 	maxRoleLength,
 	parseRoleDeck,
 } from '~/utils/roles'
-import {
-	fetchCharacterSet,
-	isCharacterSetUrl,
-} from '../../packages/character-set/check.ts'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'

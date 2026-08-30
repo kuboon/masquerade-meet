@@ -1,19 +1,19 @@
-import { BehaviorSubject, Observable, type Subscription } from 'rxjs'
 import {
 	applyVoiceParams,
 	createVoiceGraph,
 	disposeVoiceGraph,
 	type VoiceGraph,
-} from '../../packages/character-set/graph.ts'
+} from '@kuboon/masquerade-character-set/graph'
+import { BehaviorSubject, Observable, type Subscription } from 'rxjs'
 import { neutralVoice, type VoiceParams } from './characters'
 
 /**
- * The disguise itself lives in `packages/character-set`, alongside the rules
- * a published set is checked against. It has to: what `size: -0.95` sounds
- * like is part of what this app promises anybody writing a character on
- * their own site, and a second copy of the graph here would be a second
- * answer. What is left in this file is the part that is only ours — the
- * live microphone, and the one voice it is currently wearing.
+ * The disguise itself lives in `@kuboon/masquerade-character-set`, alongside
+ * the rules a published set is checked against. It has to: what `size: -0.95`
+ * sounds like is part of what this app promises anybody writing a character
+ * on their own site, and a second copy of the graph here would be a second
+ * answer. What is left in this file is the part that is only ours — the live
+ * microphone, and the one voice it is currently wearing.
  */
 
 /**
@@ -40,11 +40,11 @@ export {
 	NASAL_FREQUENCY,
 	STRETCH_BLOCK_MS,
 	type VoiceGraph,
-} from '../../packages/character-set/graph.ts'
+} from '@kuboon/masquerade-character-set/graph'
 export {
 	toEngineParams,
 	type EngineParams,
-} from '../../packages/character-set/voice.ts'
+} from '@kuboon/masquerade-character-set/voice'
 
 /** Builds the app's own graph: the served shifter, and the current voice. */
 export function createAppVoiceGraph<C extends BaseAudioContext>(context: C) {

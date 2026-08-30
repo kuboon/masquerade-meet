@@ -6,6 +6,15 @@
 
 書式そのものの説明は [docs/character-sets.md](https://github.com/kuboon/masquerade-meet/blob/main/docs/character-sets.md) にあります。
 
+## 入れる
+
+```
+deno add jsr:@kuboon/masquerade-character-set
+npx jsr add @kuboon/masquerade-character-set     # npm / pnpm / yarn / bun
+```
+
+masq 本体もこのパッケージを同じ名前で読んでいます。ルームが走らせる検証コードと、会議が鳴らす音声グラフは、ここに入っているものそのものです。
+
 ## 型だけ使う
 
 ```ts
