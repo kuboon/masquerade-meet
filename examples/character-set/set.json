@@ -1,0 +1,84 @@
+{
+	"name": "サンプル一座",
+	"tagline": "キャラセットの書き方の見本",
+	"characters": [
+		{
+			"id": "dragon",
+			"name": "ドラゴン",
+			"emoji": "🐉",
+			"tagline": "腹に響く低音",
+			"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/dragon.png",
+			"voice": {
+				"size": -0.92,
+				"weight": -0.6,
+				"nasal": -0.1,
+				"roughness": 0.25
+			}
+		},
+		{
+			"id": "bear",
+			"name": "くま",
+			"emoji": "🐻",
+			"tagline": "のっそり大きい",
+			"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/bear.png",
+			"voice": {
+				"size": -0.62,
+				"weight": -0.35,
+				"nasal": 0.05
+			}
+		},
+		{
+			"id": "owl",
+			"name": "ふくろう",
+			"emoji": "🦉",
+			"tagline": "しずかな語り",
+			"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/owl.png",
+			"voice": {
+				"size": -0.3,
+				"weight": -0.1,
+				"nasal": -0.4,
+				"roughness": 0.1
+			}
+		},
+		{
+			"id": "robot",
+			"name": "ロボット",
+			"emoji": "🤖",
+			"tagline": "人ではない声",
+			"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/robot.png",
+			"voice": {
+				"size": 0.15,
+				"weight": 0.3,
+				"nasal": 0.5,
+				"roughness": 0.35,
+				"throat": -0.6
+			}
+		},
+		{
+			"id": "cat",
+			"name": "ねこ",
+			"emoji": "🐱",
+			"tagline": "気まぐれな細さ",
+			"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/cat.png",
+			"voice": {
+				"size": 0.55,
+				"weight": 0.35,
+				"nasal": 0.25
+			}
+		},
+		{
+			"id": "frog",
+			"name": "かえる",
+			"emoji": "🐸",
+			"tagline": "しゃがれて高い",
+			"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/frog.png",
+			"voice": {
+				"size": 0.88,
+				"weight": 0.1,
+				"nasal": 0.4,
+				"roughness": 0.5,
+				"throat": 0.35
+			}
+		}
+	]
+}
