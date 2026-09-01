@@ -1,12 +1,8 @@
 {
 	"name": "@kuboon/masquerade-character-set",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"license": "Apache-2.0",
 	"type": "module",
-	"scripts": {
-		"jsr:check": "jsr publish --dry-run --allow-dirty",
-		"jsr:publish": "jsr publish"
-	},
 	"exports": {
 		".": "./mod.ts",
 		"./check": "./check.ts",
