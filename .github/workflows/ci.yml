@@ -24,17 +24,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      # The character-set contract is published to JSR and the app consumes it
-      # by that name, so "does it still publish" is part of "does it still
-      # work". This is the very command the release runs, one flag apart:
-      # anything that would stop a release — a broken export map, a type JSR
-      # cannot analyse, a compiler option it refuses — fails here instead, at
-      # the change that caused it.
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-      - run: deno publish --dry-run
-        working-directory: packages/character-set
 
   e2e:
     name: Browser tests (real browser)
@@ -183,11 +172,32 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ac92f36f0a2d84353b137574157f7480
           WRANGLER_SEND_METRICS: 'false'
 
+  publishable:
+    # The character-set contract is published to JSR and the app consumes it
+    # by that name, so "does it still publish" is part of "does it still
+    # work". The command is the release's, one flag apart.
+    #
+    # A job of its own, with no `npm ci`, on purpose: the release runs from a
+    # bare checkout, and this check is worthless unless it does too. Run after
+    # an install it passes on a package that cannot be released — Deno reads
+    # the app's tsconfig, and a `node_modules` that only CI happened to have
+    # is exactly what hid that once already.
+    name: character-set is publishable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno publish --dry-run
+        working-directory: packages/character-set
+
   release-character-set:
     name: Publish character-set to JSR
     # Same gate as the deploy: whatever goes out has passed the app's own
-    # tests, because the app is this package's first consumer.
-    needs: check
+    # tests, because the app is this package's first consumer. And the dry
+    # run, which is this job's own command with a flag on it.
+    needs: [check, publishable]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       # to push the version tag the release leaves behind

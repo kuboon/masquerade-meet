@@ -1,8 +1,18 @@
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { checkTarget, describeVoice, report } from './report.ts'
+import { checkTarget as check, describeVoice, report } from './report.ts'
+
+/**
+ * Reading, supplied by the test rather than by the module under test.
+ *
+ * The package itself never imports `node:` anything — see the note in
+ * report.ts — so the reader is the caller's to bring. Here that is Node's,
+ * because this is where the tests run; the CLI brings Deno's.
+ */
+const checkTarget = (target: string) =>
+	check(target, (path) => readFile(path, 'utf8'))
 
 const good = {
 	name: 'テスト一座',

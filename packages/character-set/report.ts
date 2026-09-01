@@ -3,9 +3,15 @@
  *
  * Kept apart from `cli.ts` so that all of it can be called from a test or a
  * build script: `cli.ts` is only argv, stdout and an exit code.
+ *
+ * Nothing here reads a file itself — the caller hands in the reader. That is
+ * not ceremony: a `node:` import anywhere in a published module makes the
+ * whole package need `@types/node` to type-check, which it cannot get in the
+ * bare checkout a release runs from. Keeping the I/O at the entry point keeps
+ * this module runtime-free, and lets a Node entry point exist later without
+ * anything here changing.
  */
 
-import { readFile } from 'node:fs/promises'
 import {
 	checkCharacterSet,
 	fetchCharacterSet,
@@ -25,13 +31,21 @@ import {
  */
 const onDisk = 'https://example.invalid/'
 
-/** Checks a set, wherever it is. */
-export async function checkTarget(target: string): Promise<CheckResult> {
+/**
+ * Checks a set, wherever it is.
+ *
+ * `readTextFile` is only consulted for a local path; an https address is
+ * fetched, exactly as a room fetches it.
+ */
+export async function checkTarget(
+	target: string,
+	readTextFile: (path: string) => Promise<string>
+): Promise<CheckResult> {
 	if (/^https?:\/\//.test(target)) return fetchCharacterSet(target)
 
 	let document: unknown
 	try {
-		document = JSON.parse(await readFile(target, 'utf8'))
+		document = JSON.parse(await readTextFile(target))
 	} catch (error) {
 		return {
 			set: undefined,
