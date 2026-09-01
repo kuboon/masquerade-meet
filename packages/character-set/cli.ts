@@ -2,9 +2,15 @@
  * Check a character set before anybody follows a link to it.
  *
  * ```
- * deno run -A jsr:@kuboon/masquerade-character-set/cli ./set.json
- * deno run -A jsr:@kuboon/masquerade-character-set/cli https://example.com/set.json
+ * deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json
+ * deno run --allow-net=example.com jsr:@kuboon/masquerade-character-set/cli https://example.com/set.json
  * ```
+ *
+ * One permission, and only the one the argument needs: reading that file, or
+ * reaching that host. Not `-A` — this reads a document somebody else wrote
+ * and then goes to the address it names, which is the last thing to hand the
+ * whole machine to. Run it with nothing at all and it still works up to the
+ * point where it needs something, then names the flag.
  *
  * A room that cannot use your set does not say so to whoever followed the
  * link — it opens with its own characters instead. So this is the only place

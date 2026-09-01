@@ -24,11 +24,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      # The character-set contract is published to JSR and the app consumes
-      # it by that name, so "does it still publish" is part of "does it still
-      # work". Catches a broken export map or a type JSR cannot analyse at
-      # the point the change is made, rather than at release.
-      - run: npm run character-set:check
+      # The character-set contract is published to JSR and the app consumes it
+      # by that name, so "does it still publish" is part of "does it still
+      # work". This is the very command the release runs, one flag apart:
+      # anything that would stop a release — a broken export map, a type JSR
+      # cannot analyse, a compiler option it refuses — fails here instead, at
+      # the change that caused it.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno publish --dry-run
+        working-directory: packages/character-set
 
   e2e:
     name: Browser tests (real browser)
@@ -176,3 +182,22 @@ jobs:
           # grants nothing on its own. The API token is what needs guarding.
           CLOUDFLARE_ACCOUNT_ID: ac92f36f0a2d84353b137574157f7480
           WRANGLER_SEND_METRICS: 'false'
+
+  release-character-set:
+    name: Publish character-set to JSR
+    # Same gate as the deploy: whatever goes out has passed the app's own
+    # tests, because the app is this package's first consumer.
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      # to push the version tag the release leaves behind
+      contents: write
+      # JSR takes GitHub's OIDC identity instead of a token, so there is
+      # nothing here to steal and nothing to rotate.
+      id-token: write
+    # Publishes when the version in jsr.json names one that has not been
+    # released, and does nothing at all when it does not — so it can sit on
+    # every push to main and a release is one edited number.
+    uses: kuboon/workflows/.github/workflows/release-jsr.yml@main
+    with:
+      directory: packages/character-set

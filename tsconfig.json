@@ -23,10 +23,16 @@
 		"strict": true,
 		"allowJs": true,
 		"forceConsistentCasingInFileNames": true,
-		"baseUrl": ".",
 		"skipLibCheck": true,
+		// Relative to this file rather than to a `baseUrl`, which TypeScript
+		// has deprecated. It also has to be gone for `deno publish` to
+		// type-check `packages/character-set`: a package.json at the root
+		// makes Deno read this file too, and it refuses a deprecated option.
 		"paths": {
-			"~/*": ["./app/*"]
+			"~/*": ["./app/*"],
+			// Named rather than found by a `baseUrl` walk, which is the only
+			// other thing that used one.
+			"schema": ["./schema.ts"]
 		},
 
 		// Remix takes care of building everything in `remix build`.

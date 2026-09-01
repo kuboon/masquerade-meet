@@ -40,12 +40,22 @@ const set: CharacterSetDocument = {
 
 ## 公開前に確かめる
 
-**ルームがあなたのセットを使えなかったとき、リンクを踏んだ人には何も言いません。** 標準のキャラクターで開くだけです。だから確かめる場所はここしかありません。
+**ルームがあなたのセットを使えなかったとき、リンクを踏んだ人には何も言いません。** 標準のキャラクターで開くだけです。だから、公開する前に必ず一度通してください。
+
+いちばん手軽なのは何も入れなくていいこれです。ルームが使うのと同じコードで検証したうえ、自分の声を録音して各キャラクターの声で聴けます。
+
+<https://masq.kbn.one/character-set>
+
+CI に置くときや手元で回したいときは CLI です。
 
 ```
-deno run -A jsr:@kuboon/masquerade-character-set/cli ./set.json
-deno run -A jsr:@kuboon/masquerade-character-set/cli https://example.com/set.json
+deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json
+deno run --allow-net=example.com jsr:@kuboon/masquerade-character-set/cli https://example.com/set.json
 ```
+
+権限は引数が要るぶんだけです。ローカルのファイルなら**そのファイルの読み取り**、URL なら**そのホストへの接続**。`-A` は要りません（他人が書いた文書を読んで、そこに書かれた住所へ出かけるコマンドに全権を渡す理由はありません）。
+
+権限を何も付けずに実行しても、必要になったところで止まって足りないフラグを名前で教えます。
 
 https の URL を渡すと、ルームがやるのとまったく同じ手順で取りに行きます。ローカルのファイルを渡した場合は、画像が本当にそこにあるかどうかだけ確かめられません。
 
