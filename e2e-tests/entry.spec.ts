@@ -51,6 +51,36 @@ test('carries the chosen character set into the room', async ({ page }) => {
 	await expect(page).toHaveURL(/\/[A-Za-z0-9_-]{8}\?set=circus$/)
 })
 
+test('carries a borrowed character set into the room', async ({ page }) => {
+	// The ordinary way in is a button on somebody else's page, which lands on
+	// /new with the address already attached and never shows this form. The
+	// field is for an author trying their own file, and it has to produce the
+	// same link that button would.
+	await page.goto('/')
+	await page.getByText('外部のキャラクターセットを使う').click()
+	await page
+		.getByLabel('キャラセットの URL')
+		.fill('https://example.com/set.json?v=2')
+	await page.getByRole('button', { name: 'ルームを作る' }).click()
+	// Encoded, or the roster's own query string would be read as ours.
+	await expect(page).toHaveURL(
+		/\/[A-Za-z0-9_-]{8}\?set=https%3A%2F%2Fexample\.com%2Fset\.json%3Fv%3D2$/
+	)
+})
+
+test('lets a pasted address win over the set that is selected', async ({
+	page,
+}) => {
+	// Both fields are always submitted, and one of them always has something
+	// in it — the radio starts checked. Nobody types an address by accident.
+	await page.goto('/')
+	await page.getByRole('img', { name: 'サーカス団' }).click()
+	await page.getByText('外部のキャラクターセットを使う').click()
+	await page.getByLabel('キャラセットの URL').fill('https://example.com/s.json')
+	await page.getByRole('button', { name: 'ルームを作る' }).click()
+	await expect(page).toHaveURL(/\?set=https%3A%2F%2Fexample\.com%2Fs\.json$/)
+})
+
 test('hands out a link with nothing but the room in it', async ({
 	browser,
 }) => {

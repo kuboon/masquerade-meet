@@ -67,6 +67,8 @@ export default function Lobby() {
 	const {
 		character,
 		characterSet,
+		characterSetIsBorrowed,
+		characterSetProblem,
 		participants,
 		canStart,
 		isHost,
@@ -112,15 +114,22 @@ export default function Lobby() {
 
 	// Everyone waits here until the meeting begins, then walks in together —
 	// that simultaneous arrival is what makes the disguises work. A name is
-	// the whole of the entry requirement: a character and a voice can be
-	// settled for somebody who has not got round to them, but the name they
-	// will be unmasked as cannot. Somebody who types one late walks in then.
+	// the whole of the entry requirement: a voice can be settled for somebody
+	// who has not got round to it, but the name they will be unmasked as
+	// cannot. Somebody who types one late walks in then.
+	//
+	// And a face. Not because it is asked for — the room deals one on
+	// arrival — but because arriving at a meeting where every one of them is
+	// already worn leaves nothing to deal, and walking in without one means
+	// walking in with no disguise at all, voice included. Whoever that
+	// happens to waits here instead, and the room lets them in the moment
+	// somebody leaves.
 	const named = displayName.trim() !== ''
 	useEffect(() => {
-		if (!meetingStarted || !named) return
+		if (!meetingStarted || !named || !character) return
 		setJoined(true)
 		navigate('room' + (params.size > 0 ? '?' + params.toString() : ''))
-	}, [meetingStarted, named, setJoined, navigate, params])
+	}, [meetingStarted, named, character, setJoined, navigate, params])
 
 	const missingParticipants = minimumParticipants - participants.length
 	const overCapacity = participants.length - characterSet.characters.length
@@ -153,6 +162,20 @@ export default function Lobby() {
 						{participants.length}人が待機中
 					</p>
 				</div>
+
+				{characterSetProblem && (
+					<p className="rounded-md bg-orange-100 p-3 text-sm text-zinc-900 dark:bg-orange-900 dark:text-zinc-100">
+						指定された外部キャラセットを読み込めませんでした（
+						{characterSetProblem}）。標準のキャラクターで進みます。
+					</p>
+				)}
+				{characterSetIsBorrowed && (
+					<p className="text-xs text-zinc-500 dark:text-zinc-400">
+						このルームは外部のキャラクターセット「{characterSet.name}」（
+						{setHost(characterSet.id)}
+						）を使っています。絵はそのサイトから読み込まれます。
+					</p>
+				)}
 
 				<div className="flex items-center gap-4 rounded-xl bg-zinc-100 p-4 dark:bg-zinc-800">
 					<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg">
@@ -277,11 +300,12 @@ export default function Lobby() {
 					// empty when every one of them is spoken for. In the lobby that
 					// is nothing to worry about — the meeting simply cannot start
 					// over capacity — but with a meeting already running there is
-					// no face left to walk in behind.
+					// no face left to walk in behind, and this is as far as
+					// anybody in that position gets.
 					<div className="rounded-md bg-zinc-200 p-3 text-sm text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">
 						<p>
 							ミーティングが進行中で、空いているキャラクターがありません。
-							誰かが退出すると参加できます。
+							誰かが退出すると自動で参加します。このまま待っていてください。
 						</p>
 					</div>
 				)}
@@ -365,4 +389,18 @@ export default function Lobby() {
 			<Disclaimer className="pt-2" />
 		</div>
 	)
+}
+
+/**
+ * The site a borrowed roster came from, for saying so on screen.
+ *
+ * The whole address is the set's id and can be long enough to wrap twice;
+ * what somebody actually needs to see is whose site it is.
+ */
+function setHost(id: string): string {
+	try {
+		return new URL(id).host
+	} catch {
+		return id
+	}
 }

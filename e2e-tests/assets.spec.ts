@@ -45,3 +45,28 @@ test('hands an unknown path to the app rather than answering it', async ({
 	const response = await request.get('/_headers')
 	expect(response.headers()['content-type']).toContain('text/html')
 })
+
+test("lets somebody else's page import the pitch shifter", async ({
+	request,
+}) => {
+	// An author previewing the voices in their own character set imports this
+	// module from their own origin, and a cross-origin module import without
+	// this header fails with nothing in the console worth reading.
+	const response = await request.get('/voice/SignalsmithStretch.mjs')
+	expect(response.status()).toBe(200)
+	expect(response.headers()['access-control-allow-origin']).toBe('*')
+})
+
+test('says plainly when Realtime is not configured', async ({ request }) => {
+	// Without credentials the library signs with a zero-length key and throws
+	// from inside itself, several times a second, saying nothing about what is
+	// missing. That is the shape the outage took, so the proxy answers for it.
+	const response = await request.post('/partytracks/sessions/new', { data: {} })
+	if (response.status() === 503) {
+		expect(await response.text()).toContain('CALLS_APP_ID')
+	} else {
+		// Configured, so it is Cloudflare's answer rather than ours — whatever
+		// it is, it must not be this Worker falling over.
+		expect(response.status()).toBeLessThan(500)
+	}
+})

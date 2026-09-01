@@ -15,10 +15,12 @@ window.__room = {
 	sockets: {},
 	state: {},
 	cards: {},
-	open(room, id) {
+	sets: {},
+	open(room, id, query) {
 		return new Promise((resolve, reject) => {
 			const ws = new WebSocket(
-				location.origin.replace('http', 'ws') + '/parties/rooms/' + room + '?_pk=' + id
+				location.origin.replace('http', 'ws') + '/parties/rooms/' + room +
+					'?_pk=' + id + (query ? '&' + query : '')
 			)
 			ws.onmessage = (event) => {
 				const message = JSON.parse(event.data)
@@ -26,6 +28,9 @@ window.__room = {
 				// Addressed to this connection alone, so it is kept per socket
 				// rather than anywhere a test could read it from the wrong one.
 				if (message.type === 'roleCard') window.__room.cards[id] = message
+				// A roster the room borrowed, sent to this connection alone and
+				// only when the room borrowed one at all.
+				if (message.type === 'characterSet') window.__room.sets[id] = message.set
 			}
 			ws.onopen = () => {
 				window.__room.sockets[id] = ws
@@ -50,6 +55,7 @@ window.__room = {
 		delete window.__room.sockets[id]
 		delete window.__room.state[id]
 		delete window.__room.cards[id]
+		delete window.__room.sets[id]
 	},
 }
 `
@@ -77,8 +83,23 @@ export const userIds = (page: Page, id: string) =>
 		id
 	) as Promise<string[]>
 
-export const open = (page: Page, room: string, id: string) =>
-	page.evaluate(([room, id]) => window.__room.open(room, id), [room, id])
+export const open = (page: Page, room: string, id: string, query?: string) =>
+	page.evaluate(([room, id, query]) => window.__room.open(room, id, query), [
+		room,
+		id,
+		query,
+	] as [string, string, string | undefined])
+
+/** Whatever the room said about itself, by connection id. */
+export const masquerade = (page: Page, id: string) =>
+	page.evaluate(
+		(id) => window.__room.state[id]?.masquerade ?? null,
+		id
+	) as Promise<any>
+
+/** The borrowed roster this connection was handed, if it was handed one. */
+export const deliveredSet = (page: Page, id: string) =>
+	page.evaluate((id) => window.__room.sets[id] ?? null, id) as Promise<any>
 
 export const send = (page: Page, id: string, message: unknown) =>
 	page.evaluate(([id, message]) => window.__room.send(id as string, message), [
@@ -135,11 +156,12 @@ export async function seatedMeeting(page: Page, room: string, ids: string[]) {
 declare global {
 	interface Window {
 		__room: {
-			open(room: string, id: string): Promise<string>
+			open(room: string, id: string, query?: string): Promise<string>
 			send(id: string, message: unknown): void
 			leave(id: string): void
 			state: Record<string, any>
 			cards: Record<string, any>
+			sets: Record<string, any>
 		}
 	}
 }

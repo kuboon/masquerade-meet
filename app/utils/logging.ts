@@ -45,6 +45,27 @@ export type LogEvent =
 			connectionId: string
 	  }
 	| {
+			/** somebody who arrived at a full meeting, finally given a face */
+			eventName: 'waitingParticipantAdmitted'
+			connectionId: string
+	  }
+	| {
+			/** a room opened with somebody else's roster, and got it */
+			eventName: 'externalCharacterSetLoaded'
+			source: string
+	  }
+	| {
+			/**
+			 * A room asked for somebody else's roster and is wearing ours
+			 * instead. Worth a line: the person who published that file cannot
+			 * see this failure from their side, and the room's own report of it
+			 * goes away with the room.
+			 */
+			eventName: 'externalCharacterSetRefused'
+			source: string
+			problem: string
+	  }
+	| {
 			eventName: 'meetingStarted'
 			meetingId?: string
 			users: number

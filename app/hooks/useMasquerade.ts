@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RoomPhase } from '~/types/Messages'
-import { getCharacter, getCharacterSet } from '~/utils/characterSets'
+import {
+	getCharacter,
+	isBuiltInSet,
+	roomCharacterSet,
+} from '~/utils/characterSets'
 import { neutralVoice } from '~/utils/characters'
 import { canRestartMeeting, canStartMeeting } from '~/utils/masquerade'
 import { stillImage$ } from '~/utils/stillImage'
@@ -32,6 +36,7 @@ export default function useMasquerade({
 		clearLostCharacter,
 		myRole,
 		roleDeal,
+		externalCharacterSet,
 	} = room
 	const {
 		phase,
@@ -39,6 +44,7 @@ export default function useMasquerade({
 		revealAt,
 		serverNow,
 		characterSetId,
+		characterSetProblem,
 		seats,
 		startAt,
 		roleDeck,
@@ -47,7 +53,7 @@ export default function useMasquerade({
 
 	const isHost = Boolean(identity && hostId === identity.id)
 	const isGameMaster = Boolean(identity && gameMasterId === identity.id)
-	const characterSet = getCharacterSet(characterSetId)
+	const characterSet = roomCharacterSet(characterSetId, externalCharacterSet)
 	const character = getCharacter(characterSet, identity?.characterId)
 
 	// Translate the server's deadline onto this machine's clock. Only the
@@ -177,6 +183,17 @@ export default function useMasquerade({
 		character,
 		/** the roster this room is hiding behind */
 		characterSet,
+		/**
+		 * Whose roster it is. A borrowed one is worth saying out loud: the
+		 * artwork comes from somebody else's server, so their server sees
+		 * every participant ask for it.
+		 */
+		characterSetIsBorrowed: !isBuiltInSet(characterSet),
+		/**
+		 * Why the room is not wearing the set it was opened with, if it is
+		 * not. The room carries on with our own faces either way.
+		 */
+		characterSetProblem,
 		/**
 		 * Who sits where, by connection id. The same on every screen, and
 		 * unchanged by anybody coming or going — an empty seat stays empty

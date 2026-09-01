@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>サンプル一座 — マスカレードのキャラクターセット</title>
+
+		<!--
+			The whole roster, in the page rather than in a file beside it, so
+			that publishing this set means publishing one file.
+
+			masq fetches this page, finds this tag by its type, and checks what
+			is in it. Nothing else on the page is read — the markup below is
+			for people.
+		-->
+		<script type="application/masquerade-character-set+json">
+			{
+				"name": "サンプル一座",
+				"tagline": "キャラセットの書き方の見本",
+				"characters": [
+					{
+						"id": "dragon",
+						"name": "ドラゴン",
+						"emoji": "🐉",
+						"tagline": "腹に響く低音",
+						"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/dragon.png",
+						"voice": {
+							"size": -0.92,
+							"weight": -0.6,
+							"nasal": -0.1,
+							"roughness": 0.25
+						}
+					},
+					{
+						"id": "bear",
+						"name": "くま",
+						"emoji": "🐻",
+						"tagline": "のっそり大きい",
+						"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/bear.png",
+						"voice": {
+							"size": -0.62,
+							"weight": -0.35,
+							"nasal": 0.05
+						}
+					},
+					{
+						"id": "owl",
+						"name": "ふくろう",
+						"emoji": "🦉",
+						"tagline": "しずかな語り",
+						"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/owl.png",
+						"voice": {
+							"size": -0.3,
+							"weight": -0.1,
+							"nasal": -0.4,
+							"roughness": 0.1
+						}
+					},
+					{
+						"id": "robot",
+						"name": "ロボット",
+						"emoji": "🤖",
+						"tagline": "人ではない声",
+						"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/robot.png",
+						"voice": {
+							"size": 0.15,
+							"weight": 0.3,
+							"nasal": 0.5,
+							"roughness": 0.35,
+							"throat": -0.6
+						}
+					},
+					{
+						"id": "cat",
+						"name": "ねこ",
+						"emoji": "🐱",
+						"tagline": "気まぐれな細さ",
+						"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/cat.png",
+						"voice": {
+							"size": 0.55,
+							"weight": 0.35,
+							"nasal": 0.25
+						}
+					},
+					{
+						"id": "frog",
+						"name": "かえる",
+						"emoji": "🐸",
+						"tagline": "しゃがれて高い",
+						"image": "https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/frog.png",
+						"voice": {
+							"size": 0.88,
+							"weight": 0.1,
+							"nasal": 0.4,
+							"roughness": 0.5,
+							"throat": 0.35
+						}
+					}
+				]
+			}
+		</script>
+
+		<style>
+			body {
+				font-family: system-ui, sans-serif;
+				margin: 0 auto;
+				max-width: 46rem;
+				padding: 2rem 1rem;
+				line-height: 1.7;
+			}
+			ul {
+				display: grid;
+				gap: 1rem;
+				grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+				list-style: none;
+				padding: 0;
+			}
+			img {
+				width: 100%;
+				height: auto;
+				border-radius: 0.5rem;
+			}
+			p {
+				margin: 0.4rem 0 0;
+				font-size: 0.85rem;
+			}
+			a.go {
+				display: inline-block;
+				background: #ea580c;
+				color: #fff;
+				text-decoration: none;
+				padding: 0.7em 1.4em;
+				border-radius: 0.4rem;
+				font-weight: 700;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>サンプル一座</h1>
+		<p>
+			キャラセットの書き方の見本です。絵はこのリポジトリのものを借りていますが、
+			本来は自分のサイトに置いた絵を指します。
+		</p>
+
+		<!--
+			The address is this page's own. Encode it: an unencoded one loses
+			everything after its own `?` or `&`, and nothing anywhere says so.
+		-->
+		<p>
+			<a
+				class="go"
+				href="https://masq.kbn.one/new?set=https%3A%2F%2Fraw.githubusercontent.com%2Fkuboon%2Fmasquerade-meet%2Fmain%2Fexamples%2Fcharacter-set%2Findex.html"
+			>
+				このキャラセットでマスカレードする
+			</a>
+		</p>
+
+		<ul>
+			<li>
+				<img
+					src="https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/dragon.png"
+					alt=""
+					width="256"
+					height="256"
+				/>
+				<p><strong>🐉 ドラゴン</strong><br />腹に響く低音</p>
+			</li>
+			<li>
+				<img
+					src="https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/bear.png"
+					alt=""
+					width="256"
+					height="256"
+				/>
+				<p><strong>🐻 くま</strong><br />のっそり大きい</p>
+			</li>
+			<li>
+				<img
+					src="https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/owl.png"
+					alt=""
+					width="256"
+					height="256"
+				/>
+				<p><strong>🦉 ふくろう</strong><br />しずかな語り</p>
+			</li>
+			<li>
+				<img
+					src="https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/robot.png"
+					alt=""
+					width="256"
+					height="256"
+				/>
+				<p><strong>🤖 ロボット</strong><br />人ではない声</p>
+			</li>
+			<li>
+				<img
+					src="https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/cat.png"
+					alt=""
+					width="256"
+					height="256"
+				/>
+				<p><strong>🐱 ねこ</strong><br />気まぐれな細さ</p>
+			</li>
+			<li>
+				<img
+					src="https://raw.githubusercontent.com/kuboon/masquerade-meet/main/public/characters/animals/frog.png"
+					alt=""
+					width="256"
+					height="256"
+				/>
+				<p><strong>🐸 かえる</strong><br />しゃがれて高い</p>
+			</li>
+		</ul>
+
+		<p>
+			公開する前に
+			<a
+				href="https://masq.kbn.one/character-set?url=https%3A%2F%2Fraw.githubusercontent.com%2Fkuboon%2Fmasquerade-meet%2Fmain%2Fexamples%2Fcharacter-set%2Findex.html"
+				>キャラセットを確かめる</a
+			>
+			で中身と声を確認してください。ルームが読み込みに失敗しても、リンクを踏んだ人には何も表示されません。
+		</p>
+	</body>
+</html>

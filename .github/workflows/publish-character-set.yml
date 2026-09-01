@@ -1,0 +1,40 @@
+name: Publish character-set package
+
+# Cutting a release of the contract third parties build against, which is a
+# different event from deploying the app: the app ships on every push to
+# main, and this only when somebody says a version is done.
+#
+# Tag it to release it:
+#
+#     npm version --workspace @kuboon/masquerade-character-set patch
+#     # bump the same number in packages/character-set/jsr.json
+#     git tag character-set-v0.1.1 && git push --tags
+#
+# No token. JSR takes GitHub's OIDC identity, which is why `id-token: write`
+# is here — it means nothing to steal and nothing to rotate. It does require
+# the package on jsr.io to be linked to this repository once, by hand, in the
+# package's settings.
+on:
+  push:
+    tags: ['character-set-v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish to JSR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The app imports this package by its published name, so its own tests
+      # are a test of the thing about to go out. Publishing something the
+      # app has not been run against is how a contract breaks quietly.
+      - run: npm run check
+      - run: npm run character-set:publish
