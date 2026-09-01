@@ -122,13 +122,17 @@ Never tell the author a set is finished without this.
 Before publishing, from the repo:
 
 ```
-deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json
+npx jsrex @kuboon/masquerade-character-set/cli set.json
 ```
 
-Only the permission the argument needs — the file it reads, or, for a URL,
-`--allow-net=<host>`. Never `-A`: this reads a stranger's document and then
-fetches the address inside it. With no permissions at all it still runs and
-names the flag it wanted.
+`jsrex` runs a JSR package on Node, so this needs nothing installed. With
+Deno, run it directly and give it only the permission the argument needs —
+the file it reads, or `--allow-net=<host>` for a URL. Never `-A`: this reads
+a stranger's document and then fetches the address inside it.
+
+```
+deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json
+```
 
 Once it is published, `https://masq.kbn.one/character-set?url=<the url>`
 checks the live thing and lets them record five seconds of their own voice

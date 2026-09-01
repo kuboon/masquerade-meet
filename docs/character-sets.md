@@ -4,11 +4,11 @@
 
 ## 先に道具
 
-|                                                                                    |                                                                                                                |
-| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| [`https://masq.kbn.one/character-set`](https://masq.kbn.one/character-set)         | URL を入れると中身を確認でき、自分の声を録音して各キャラクターの声で聴けます。インストール不要                 |
-| `deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json` | 公開前に手元で確認。CI にも置けます。権限は引数が要るぶんだけ（URL を渡すときは `--allow-net=<ホスト>`）       |
-| `@kuboon/masquerade-character-set`（JSR）                                          | 型（root export）、チェッカ（`/check`）、声のプレビュー（`/preview`）。masq 本体もこれを同じ名前で読んでいます |
+|                                                                            |                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`https://masq.kbn.one/character-set`](https://masq.kbn.one/character-set) | URL を入れると中身を確認でき、自分の声を録音して各キャラクターの声で聴けます。インストール不要                                                                                                       |
+| `npx jsrex @kuboon/masquerade-character-set/cli set.json`                  | 公開前に手元で確認。CI にも置けます。Deno があるなら `deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json`（権限は引数が要るぶんだけ。URL には `--allow-net=<ホスト>`） |
+| `@kuboon/masquerade-character-set`（JSR）                                  | 型（root export）、チェッカ（`/check`）、声のプレビュー（`/preview`）。masq 本体もこれを同じ名前で読んでいます                                                                                       |
 
 **ルームが読み込みに失敗しても、リンクを踏んだ人には何も表示されません。** 標準のキャラクターで開くだけです。気づけるのは上のどれかを使ったときだけなので、公開前に必ず通してください。
 
@@ -103,7 +103,7 @@
 - `set.json` — JSON ファイルとして置く形
 - `index.html` — ページに埋め込む形（1ファイルで配れる）
 
-どちらも `deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json` を通してあります。絵はこのリポジトリのものを借りているので、そこだけは自分のものに差し替えてください。
+どちらも `npx jsrex @kuboon/masquerade-character-set/cli` を通してあります。絵はこのリポジトリのものを借りているので、そこだけは自分のものに差し替えてください。
 
 ## HTML に埋め込む
 

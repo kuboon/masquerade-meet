@@ -46,16 +46,23 @@ const set: CharacterSetDocument = {
 
 <https://masq.kbn.one/character-set>
 
-CI に置くときや手元で回したいときは CLI です。
+CI に置くときや手元で回したいときは CLI です。インストールは要りません。
+
+```
+npx jsrex @kuboon/masquerade-character-set/cli set.json
+npx jsrex @kuboon/masquerade-character-set/cli https://example.com/set.json
+```
+
+[`jsrex`](https://www.npmjs.com/package/jsrex) は JSR のパッケージを Node で走らせるもので、`deno run jsr:…` の Node 版にあたります。
+
+Deno があるならそのままどうぞ。
 
 ```
 deno run --allow-read=set.json jsr:@kuboon/masquerade-character-set/cli set.json
 deno run --allow-net=example.com jsr:@kuboon/masquerade-character-set/cli https://example.com/set.json
 ```
 
-権限は引数が要るぶんだけです。ローカルのファイルなら**そのファイルの読み取り**、URL なら**そのホストへの接続**。`-A` は要りません（他人が書いた文書を読んで、そこに書かれた住所へ出かけるコマンドに全権を渡す理由はありません）。
-
-権限を何も付けずに実行しても、必要になったところで止まって足りないフラグを名前で教えます。
+**権限は引数が要るぶんだけ**です。ローカルのファイルなら**そのファイルの読み取り**、URL なら**そのホストへの接続**。`-A` は要りません（他人が書いた文書を読んで、そこに書かれた住所へ出かけるコマンドに全権を渡す理由はありません）。何も付けずに実行しても、必要になったところで止まって足りないフラグを名前で教えます。Node にはそれに当たるものがありませんが、それは Node の話であってこちらの選択ではありません。
 
 https の URL を渡すと、ルームがやるのとまったく同じ手順で取りに行きます。ローカルのファイルを渡した場合は、画像が本当にそこにあるかどうかだけ確かめられません。
 
