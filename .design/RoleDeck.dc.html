@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;700;800&amp;family=Zen+Kaku+Gothic+New:wght@400;500;700&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif; }
+    a { color: #d9b871; } a:hover { color: #efd699; }
+    .mincho { font-family: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif; }
+  </style>
+</helmet>
+
+<div style="width: 900px; height: 1080px; overflow: hidden; color: #ece8f0; background: radial-gradient(70% 40% at 50% 0%, rgba(200,164,78,.08), rgba(20,16,28,0) 60%), repeating-linear-gradient(45deg, rgba(236,232,240,.014) 0 1px, rgba(0,0,0,0) 1px 15px), #14101c; box-sizing: border-box; padding: 40px;">
+  <div style="display: flex; flex-direction: column; gap: 26px;">
+
+    <div style="border-bottom: 1px solid #2a2338; padding-bottom: 18px;">
+      <p style="margin: 0 0 7px; font-size: 10px; letter-spacing: .3em; color: #c8a44e; text-transform: uppercase;">Lobby &middot; Game master</p>
+      <h1 class="mincho" style="margin: 0; font-size: 28px; font-weight: 700; color: #f4efe4;">役職カードを配る</h1>
+      <p style="margin: 9px 0 0; font-size: 12px; line-height: 1.8; color: #9d94ae;">ロビーの「役職カード」欄が、ゲームマスターにだけこの姿で開きます。誰が何を持っているかは、ここにしか出ません。</p>
+    </div>
+
+    <div>
+      <label style="display: block; font-size: 11px; letter-spacing: .14em; color: #6f6784; margin-bottom: 8px;">配るカード</label>
+      <input type="text" value="人狼 人狼 占い師 騎士 村人" style="width: 100%; box-sizing: border-box; background: #221d30; border: 1px solid #4a3e22; border-radius: 2px; color: #ece8f0; font-family: inherit; font-size: 15px; letter-spacing: .04em; padding: 13px 14px;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 11px; flex-wrap: wrap;">
+        <span style="font-size: 11px; color: #6f6784;">いまの 5 人なら</span>
+        <span style="border: 1px solid #4a3e22; border-radius: 2px; background: rgba(200,164,78,.06); color: #d9b871; font-size: 11px; padding: 4px 10px;">人狼 2</span>
+        <span style="border: 1px solid #4a3e22; border-radius: 2px; background: rgba(200,164,78,.06); color: #d9b871; font-size: 11px; padding: 4px 10px;">占い師 1</span>
+        <span style="border: 1px solid #4a3e22; border-radius: 2px; background: rgba(200,164,78,.06); color: #d9b871; font-size: 11px; padding: 4px 10px;">騎士 1</span>
+        <span style="border: 1px solid #4a3e22; border-radius: 2px; background: rgba(200,164,78,.06); color: #d9b871; font-size: 11px; padding: 4px 10px;">村人 1</span>
+      </div>
+      <p style="margin: 11px 0 0; font-size: 11px; color: #6f6784;">スペース区切り（全角も可）。人数が足りないときは最後のカードを複数人に配ります。空欄なら役職なしで進みます。</p>
+    </div>
+
+    <div style="display: flex; gap: 13px; align-items: flex-start; border: 1px solid #4a3e22; border-radius: 3px; background: rgba(200,164,78,.045); padding: 17px 19px;">
+      <span style="flex-shrink: 0; width: 17px; height: 17px; margin-top: 1px; border: 1px solid #c8a44e; border-radius: 2px; background: #c8a44e; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#1a1424" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+      </span>
+      <div>
+        <p style="margin: 0 0 5px; font-size: 14px; font-weight: 700; color: #f4efe4;">自分はゲームマスター</p>
+        <p style="margin: 0; font-size: 11px; line-height: 1.8; color: #9d94ae;">自分にはカードを配らず、誰にどのカードが渡ったかを把握します。声も変換されません（進行役の声が変わっていると案内になりません）。</p>
+      </div>
+    </div>
+
+    <div style="border: 1px solid #302842; border-radius: 3px; background: #1d1828; padding: 20px 22px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#c8a44e" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="12" height="15" rx="1.5"/><path d="M7.5 9.5h4M7.5 13h4"/><path d="M17.5 7l3.2 1.2-3 8.4-3.2-1.2"/></svg>
+        <p class="mincho" style="margin: 0; font-size: 15px; font-weight: 700; letter-spacing: .08em; color: #f4efe4;">誰にどのカードを渡すか</p>
+      </div>
+      <ul style="margin: 0; padding: 0; list-style: none;">
+          <li style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2a2338;">
+            <img src="fox.webp" alt="こんきち" style="display: block; width: 30px; height: 30px; object-fit: cover; border: 1px solid #332b45; border-radius: 15px 15px 2px 2px;">
+            <span style="flex-grow: 1; font-size: 13px; color: #ece8f0;">こんきち</span>
+            <span style="display: flex; align-items: center; gap: 9px; min-width: 132px; justify-content: space-between; border: 1px solid #4a3e22; border-radius: 2px; background: #221d30; padding: 7px 11px; font-size: 12px; color: #ece8f0;">
+              占い師
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#6f6784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </li>
+          <li style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2a2338;">
+            <img src="penguin.webp" alt="ぺんぺん" style="display: block; width: 30px; height: 30px; object-fit: cover; border: 1px solid #332b45; border-radius: 15px 15px 2px 2px;">
+            <span style="flex-grow: 1; font-size: 13px; color: #ece8f0;">ぺんぺん</span>
+            <span style="display: flex; align-items: center; gap: 9px; min-width: 132px; justify-content: space-between; border: 1px solid #4a3e22; border-radius: 2px; background: #221d30; padding: 7px 11px; font-size: 12px; color: #ece8f0;">
+              人狼
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#6f6784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </li>
+          <li style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2a2338;">
+            <img src="cat.webp" alt="にゃんきち" style="display: block; width: 30px; height: 30px; object-fit: cover; border: 1px solid #332b45; border-radius: 15px 15px 2px 2px;">
+            <span style="flex-grow: 1; font-size: 13px; color: #ece8f0;">にゃんきち</span>
+            <span style="display: flex; align-items: center; gap: 9px; min-width: 132px; justify-content: space-between; border: 1px solid #332b45; border-radius: 2px; background: #221d30; padding: 7px 11px; font-size: 12px; color: #6f6784;">
+              ランダム
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#6f6784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </li>
+          <li style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2a2338;">
+            <img src="dragon.webp" alt="どらごん" style="display: block; width: 30px; height: 30px; object-fit: cover; border: 1px solid #332b45; border-radius: 15px 15px 2px 2px;">
+            <span style="flex-grow: 1; font-size: 13px; color: #ece8f0;">どらごん</span>
+            <span style="display: flex; align-items: center; gap: 9px; min-width: 132px; justify-content: space-between; border: 1px solid #4a3e22; border-radius: 2px; background: #221d30; padding: 7px 11px; font-size: 12px; color: #ece8f0;">
+              人狼
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#6f6784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </li>
+          <li style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2a2338;">
+            <img src="tanuki.webp" alt="ぽんぽこ" style="display: block; width: 30px; height: 30px; object-fit: cover; border: 1px solid #332b45; border-radius: 15px 15px 2px 2px;">
+            <span style="flex-grow: 1; font-size: 13px; color: #ece8f0;">ぽんぽこ</span>
+            <span style="display: flex; align-items: center; gap: 9px; min-width: 132px; justify-content: space-between; border: 1px solid #332b45; border-radius: 2px; background: #221d30; padding: 7px 11px; font-size: 12px; color: #6f6784;">
+              ランダム
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#6f6784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </li>
+      </ul>
+      <p style="margin: 14px 0 0; font-size: 11px; line-height: 1.8; color: #6f6784;">指定しなかった人にはランダムで配られます。この内訳はあなたにしか見えません。並んでいるのは<span style="color: #9d94ae;">キャラクターの名前</span>で、本名はここにも出ません。</p>
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: flex-start; border: 1px solid #6e2438; border-radius: 3px; background: rgba(163,48,73,.12); padding: 15px 18px;">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#e08fa1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 4.5l9 15.5H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <p style="margin: 0; font-size: 12px; line-height: 1.75; color: #e0c3cb;">人狼 の枚数が足りません。あふれた人にはランダムで配られます。</p>
+    </div>
+
+    <p style="margin: 0; font-size: 11px; line-height: 1.8; color: #6f6784; border-top: 1px solid #2a2338; padding-top: 18px;">この割り当ては「ミーティング開始」と一緒に送られます。押すまではルームに何も渡っていません。</p>
+  </div>
+</div>
+
+<script data-dc-script data-props='{"$preview":{"width":900,"height":1080}}'>
+class Component extends DCLogic {}
+</script>
+</x-dc>
+</body>
+</html>

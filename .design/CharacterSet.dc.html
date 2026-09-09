@@ -1,0 +1,200 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;700;800&amp;family=Zen+Kaku+Gothic+New:wght@400;500;700&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif; }
+    a { color: #d9b871; } a:hover { color: #efd699; }
+    .mincho { font-family: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif; }
+  </style>
+</helmet>
+
+<div style="width: 1080px; height: 1560px; overflow: hidden; color: #ece8f0; background: radial-gradient(80% 30% at 50% 0%, rgba(200,164,78,.08), rgba(20,16,28,0) 60%), repeating-linear-gradient(45deg, rgba(236,232,240,.014) 0 1px, rgba(0,0,0,0) 1px 15px), #14101c; box-sizing: border-box; padding: 48px 60px;">
+  <div style="display: flex; flex-direction: column; gap: 26px;">
+
+    <div>
+      <p style="margin: 0 0 8px; font-size: 10px; letter-spacing: .3em; color: #c8a44e; text-transform: uppercase;">Character set</p>
+      <h1 class="mincho" style="margin: 0; font-size: 32px; font-weight: 700; color: #f4efe4;">キャラセットを確かめる</h1>
+      <p style="margin: 12px 0 0; font-size: 13px; line-height: 1.85; color: #9d94ae; max-width: 780px; text-wrap: pretty;">自分のサイトに置いたキャラセットが、ルームで使える形になっているか確かめます。ルームが読み込みに失敗しても、リンクを踏んだ人には何も表示されません（標準のキャラクターで開きます）。気づけるのはここだけです。</p>
+    </div>
+
+    <div>
+      <label style="display: block; font-size: 11px; letter-spacing: .14em; color: #6f6784; margin-bottom: 8px;">キャラセットの URL</label>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" value="https://example.com/masquerade.json" style="flex-grow: 1; min-width: 0; background: #221d30; border: 1px solid #4a3e22; border-radius: 2px; color: #ece8f0; font-family: inherit; font-size: 14px; padding: 12px 14px;">
+        <button type="button" style="flex-shrink: 0; border: 1px solid #a8863a; border-radius: 2px; background: linear-gradient(180deg, #d9b871, #bd9a44); color: #1a1424; font-family: inherit; font-size: 13px; font-weight: 700; letter-spacing: .16em; padding: 0 28px; cursor: pointer;">確かめる</button>
+      </div>
+      <p style="margin: 10px 0 0; font-size: 11px; color: #6f6784;">JSON ファイルか、<code style="color: #9d94ae;">&lt;script type="application/masquerade-character-set+json"&gt;</code> を埋め込んだページの URL。</p>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 14px; border: 1px solid #3d5c3a; border-radius: 3px; background: rgba(127,174,122,.09); padding: 16px 20px;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#8fc389" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.8 2.8L16.4 9"/></svg>
+      <div>
+        <p style="margin: 0 0 3px; font-size: 14px; font-weight: 700; color: #b7dcb2;">このセットはルームで使えます</p>
+        <p style="margin: 0; font-size: 12px; color: #9d94ae;">よるのどうぶつ &mdash; 15 人<span style="color: #6f6784;">（このセットで開いたルームの定員）</span></p>
+      </div>
+    </div>
+
+    <div style="border: 1px solid #302842; border-radius: 3px; background: #1d1828; padding: 20px 22px;">
+      <p class="mincho" style="margin: 0 0 14px; font-size: 15px; font-weight: 700; letter-spacing: .1em; color: #f4efe4;">自分の声で聴いてみる</p>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button type="button" style="display: flex; align-items: center; gap: 8px; border: 1px solid #4a3e22; border-radius: 2px; background: rgba(200,164,78,.06); color: #d9b871; font-family: inherit; font-size: 13px; letter-spacing: .1em; padding: 10px 18px; cursor: pointer;">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#d9b871" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+          5秒 録音
+        </button>
+        <button type="button" style="display: flex; align-items: center; gap: 8px; border: 1px solid #a8863a; border-radius: 2px; background: linear-gradient(180deg, #d9b871, #bd9a44); color: #1a1424; font-family: inherit; font-size: 13px; font-weight: 700; letter-spacing: .12em; padding: 10px 18px; cursor: pointer;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#1a1424" stroke="none"><path d="M8 5.5l10 6.5-10 6.5z"/></svg>
+          ふくろうはかせ の声で聴く
+        </button>
+        <span style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6f6784; margin-left: auto;">
+          <span style="width: 26px; height: 14px; border-radius: 999px; background: #332b45; position: relative;"><span style="position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #6f6784;"></span></span>
+          変換なしで聴く
+        </span>
+      </div>
+      <p style="margin: 12px 0 0; font-size: 11px; color: #6f6784;">録音してその場で繰り返し再生します。録音はこのブラウザから出ません。</p>
+    </div>
+
+    <div>
+      <p class="mincho" style="margin: 0 0 12px; font-size: 15px; font-weight: 700; letter-spacing: .1em; color: #f4efe4;">15 人ぜんぶ聴いてみる</p>
+      <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px;">
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="bear.webp" alt="くまごろう" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">くまごろう</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="rabbit.webp" alt="うさぴょん" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">うさぴょん</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="fox.webp" alt="こんきち" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">こんきち</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="tanuki.webp" alt="ぽんぽこ" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ぽんぽこ</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="cat.webp" alt="にゃんきち" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">にゃんきち</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="dog.webp" alt="わんすけ" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">わんすけ</p>
+        </div>
+        <div style="position: relative; border: 1px solid #c8a44e; border-radius: 2px; overflow: hidden; background: #1a1526;">
+          <img src="owl.webp" alt="ふくろうはかせ" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #3a2f18; color: #e7cd8f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ふくろうはかせ</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="penguin.webp" alt="ぺんぺん" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ぺんぺん</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="frog.webp" alt="けろすけ" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">けろすけ</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="sheep.webp" alt="めーちゃん" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">めーちゃん</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="dragon.webp" alt="どらごん" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">どらごん</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="robot.webp" alt="ロボ丸" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ロボ丸</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="alien.webp" alt="うちゅうくん" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">うちゅうくん</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="ghost.webp" alt="おばけん" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">おばけん</p>
+        </div>
+        <div style="position: relative; border: 1px solid #2a2338; border-radius: 2px; overflow: hidden; background: #1a1526; opacity: .78;">
+          <img src="lion.webp" alt="らいおん丸" style="display: block; width: 100%; height: 104px; object-fit: cover;">
+          <p style="margin: 0; padding: 6px 3px; text-align: center; font-size: 10px; background: #221d30; color: #9d94ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">らいおん丸</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border: 1px solid #302842; border-radius: 3px; background: #1d1828; padding: 20px 22px;">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+        <img src="owl.webp" alt="ふくろうはかせ" style="display: block; width: 44px; height: 44px; object-fit: cover; border: 1px solid #4a3e22; border-radius: 22px 22px 2px 2px;">
+        <div>
+          <p style="margin: 0; font-size: 15px; font-weight: 700; color: #f4efe4;">ふくろうはかせ</p>
+          <p style="margin: 3px 0 0; font-size: 11px; color: #6f6784;">こもった重低音</p>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 13px;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <span style="width: 108px; flex-shrink: 0; font-size: 12px; color: #ece8f0;">体の大きさ</span>
+            <div style="flex-grow: 1; position: relative; height: 3px; background: #2f2743; border-radius: 2px;">
+              <div style="position: absolute; left: 16%; top: 50%; width: 11px; height: 11px; margin-left: -5px; margin-top: -5px; background: #f0dcae; border: 1px solid #a8863a; border-radius: 50%;"></div>
+            </div>
+            <span style="width: 46px; flex-shrink: 0; text-align: right; font-size: 11px; color: #d9b871; font-variant-numeric: tabular-nums;">-0.68</span>
+            <span style="width: 168px; flex-shrink: 0; font-size: 10px; color: #6f6784;">大きく低い ↔ 小さく高い</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <span style="width: 108px; flex-shrink: 0; font-size: 12px; color: #ece8f0;">声の重心</span>
+            <div style="flex-grow: 1; position: relative; height: 3px; background: #2f2743; border-radius: 2px;">
+              <div style="position: absolute; left: 24%; top: 50%; width: 11px; height: 11px; margin-left: -5px; margin-top: -5px; background: #f0dcae; border: 1px solid #a8863a; border-radius: 50%;"></div>
+            </div>
+            <span style="width: 46px; flex-shrink: 0; text-align: right; font-size: 11px; color: #d9b871; font-variant-numeric: tabular-nums;">-0.52</span>
+            <span style="width: 168px; flex-shrink: 0; font-size: 10px; color: #6f6784;">太く暗い ↔ 細く明るい</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <span style="width: 108px; flex-shrink: 0; font-size: 12px; color: #ece8f0;">響き</span>
+            <div style="flex-grow: 1; position: relative; height: 3px; background: #2f2743; border-radius: 2px;">
+              <div style="position: absolute; left: 30%; top: 50%; width: 11px; height: 11px; margin-left: -5px; margin-top: -5px; background: #f0dcae; border: 1px solid #a8863a; border-radius: 50%;"></div>
+            </div>
+            <span style="width: 46px; flex-shrink: 0; text-align: right; font-size: 11px; color: #d9b871; font-variant-numeric: tabular-nums;">-0.40</span>
+            <span style="width: 168px; flex-shrink: 0; font-size: 10px; color: #6f6784;">こもった ↔ 鼻にかかった</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <span style="width: 108px; flex-shrink: 0; font-size: 12px; color: #ece8f0;">かすれ</span>
+            <div style="flex-grow: 1; position: relative; height: 3px; background: #2f2743; border-radius: 2px;">
+              <div style="position: absolute; left: 22%; top: 50%; width: 11px; height: 11px; margin-left: -5px; margin-top: -5px; background: #f0dcae; border: 1px solid #a8863a; border-radius: 50%;"></div>
+            </div>
+            <span style="width: 46px; flex-shrink: 0; text-align: right; font-size: 11px; color: #d9b871; font-variant-numeric: tabular-nums;">0.22</span>
+            <span style="width: 168px; flex-shrink: 0; font-size: 10px; color: #6f6784;">きれい ↔ ざらざら</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <span style="width: 108px; flex-shrink: 0; font-size: 12px; color: #ece8f0;">口の大きさ</span>
+            <div style="flex-grow: 1; position: relative; height: 3px; background: #2f2743; border-radius: 2px;">
+              <div style="position: absolute; left: 70%; top: 50%; width: 11px; height: 11px; margin-left: -5px; margin-top: -5px; background: #f0dcae; border: 1px solid #a8863a; border-radius: 50%;"></div>
+            </div>
+            <span style="width: 46px; flex-shrink: 0; text-align: right; font-size: 11px; color: #d9b871; font-variant-numeric: tabular-nums;">0.40</span>
+            <span style="width: 168px; flex-shrink: 0; font-size: 10px; color: #6f6784;">大きな口 ↔ 小さな口</span>
+          </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 13px; align-items: flex-start; border: 1px solid #6e2438; border-radius: 3px; background: rgba(163,48,73,.11); padding: 17px 20px;">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#e08fa1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="M12 4.5l9 15.5H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+      <div>
+        <p style="margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #f0c8d0;">通らなかったときは、こう出ます</p>
+        <ul style="margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.9; color: #d5b9c3;">
+          <li>characters が 15 件ありません（12 件）</li>
+          <li>3 番目のキャラクターに image がありません</li>
+          <li>ねこ の voice.size が範囲外です（-1 〜 1）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script data-dc-script data-props='{"$preview":{"width":1080,"height":1560}}'>
+class Component extends DCLogic {}
+</script>
+</x-dc>
+</body>
+</html>

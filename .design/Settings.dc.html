@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;700;800&amp;family=Zen+Kaku+Gothic+New:wght@400;500;700&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif; }
+    a { color: #d9b871; } a:hover { color: #efd699; }
+    .mincho { font-family: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif; }
+  </style>
+</helmet>
+
+<div style="width: 760px; height: 760px; overflow: hidden; position: relative; background: rgba(10,7,15,.86); display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 30px;">
+  <div style="width: 100%; background: #1b1626; border: 1px solid rgba(200,164,78,.3); border-radius: 3px; box-shadow: 0 40px 90px rgba(0,0,0,.65); padding: 30px 34px 32px; color: #ece8f0; font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', system-ui, sans-serif;">
+
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid #2a2338; padding-bottom: 18px; margin-bottom: 24px;">
+      <div>
+        <p style="margin: 0 0 6px; font-size: 10px; letter-spacing: .3em; color: #c8a44e; text-transform: uppercase;">Settings</p>
+        <h2 class="mincho" style="margin: 0; font-size: 24px; font-weight: 700; color: #f4efe4;">設定</h2>
+      </div>
+      <button type="button" style="display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid #332b45; border-radius: 2px; background: transparent; cursor: pointer;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9d94ae" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div style="display: flex; align-items: center; gap: 18px;">
+        <span style="width: 108px; flex-shrink: 0; text-align: right; font-size: 13px; color: #ece8f0;">カメラ</span>
+        <span style="flex-grow: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #332b45; border-radius: 2px; background: #221d30; color: #cdc5d8; font-size: 13px; padding: 11px 13px;">
+          FaceTime HD カメラ
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#6f6784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 18px;">
+        <span style="width: 108px; flex-shrink: 0; text-align: right; font-size: 13px; color: #ece8f0;">マイク</span>
+        <span style="flex-grow: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #332b45; border-radius: 2px; background: #221d30; color: #cdc5d8; font-size: 13px; padding: 11px 13px;">
+          MacBook Pro のマイク
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#6f6784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 18px;">
+        <span style="width: 108px; flex-shrink: 0; text-align: right; font-size: 13px; color: #ece8f0; padding-top: 2px;">背景をぼかす</span>
+        <div style="flex-grow: 1;">
+          <span style="display: inline-block; width: 30px; height: 16px; border-radius: 999px; background: #332b45; position: relative; vertical-align: middle;"><span style="position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #6f6784;"></span></span>
+          <p style="margin: 7px 0 0; font-size: 11px; color: #6f6784;">アンマスク後、カメラが映るときだけ効きます</p>
+        </div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 18px;">
+        <span style="width: 108px; flex-shrink: 0; text-align: right; font-size: 13px; color: #ece8f0; padding-top: 2px;">ノイズ抑制</span>
+        <div style="flex-grow: 1;">
+          <span style="display: inline-block; width: 30px; height: 16px; border-radius: 999px; background: #c8a44e; position: relative; vertical-align: middle;"><span style="position: absolute; left: 14px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #1a1424;"></span></span>
+          <p style="margin: 7px 0 0; font-size: 11px; color: #6f6784;">変換前のマイク入力に掛かります</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #2a2338; margin-top: 26px; padding-top: 22px;">
+      <p style="margin: 0 0 12px; font-size: 13px; color: #ece8f0;">カメラの代わりの静止画</p>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="width: 78px; height: 78px; flex-shrink: 0; border: 1px solid #332b45; border-radius: 3px; background: #221d30; display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#574f6b" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg>
+        </div>
+        <div style="flex-grow: 1;">
+          <button type="button" style="border: 1px solid #4a3e22; border-radius: 2px; background: rgba(200,164,78,.06); color: #d9b871; font-family: inherit; font-size: 12px; letter-spacing: .1em; padding: 9px 18px; cursor: pointer;">画像を選ぶ</button>
+          <p style="margin: 10px 0 0; font-size: 11px; line-height: 1.75; color: #6f6784;">アンマスク後、カメラの代わりにこれが流れます。画像はブラウザから出ません。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script data-dc-script data-props='{"$preview":{"width":760,"height":760}}'>
+class Component extends DCLogic {}
+</script>
+</x-dc>
+</body>
+</html>

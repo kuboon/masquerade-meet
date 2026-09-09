@@ -17,3 +17,6 @@ test-results
 
 .yalc
 yalc.lock
+
+# 組み立て直せるので追跡しない（約 2.9MB）
+.design/masquerade-redesign.html
