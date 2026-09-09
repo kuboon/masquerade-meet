@@ -2,3 +2,7 @@ public/mockServiceWorker.js
 public/e2ee/wasm-pkg/
 # vendored, byte-for-byte, by `npm run voice:vendor`
 public/voice/SignalsmithStretch.mjs
+
+# デザインの元ファイル。インラインスタイルと data-props は
+# シーダーがそのまま読むので、整形で書き換えさせない
+.design/*.dc.html
