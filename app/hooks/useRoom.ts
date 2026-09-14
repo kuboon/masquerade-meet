@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ClientMessage, RoomState, ServerMessage } from '~/types/Messages'
+import { heartbeatInterval, heartbeatPing } from '~/types/Messages'
 import { defaultCharacterSetId } from '~/utils/characterSets'
 import type { CharacterSet } from '~/utils/characters'
 import {
@@ -87,7 +88,7 @@ export default function useRoom({
 	// The roster this room borrowed from somebody else's site, if it did.
 	// Sent to this connection once, ahead of the first room state, and kept
 	// out of the room state for the same reason the role card is: it does not
-	// belong in something rebroadcast every fifteen seconds.
+	// belong in something rebroadcast on every change.
 	const [externalCharacterSet, setExternalCharacterSet] =
 		useState<CharacterSet>()
 
@@ -115,8 +116,8 @@ export default function useRoom({
 				case 'roomState':
 					// prevent updating state if nothing has changed. serverNow
 					// ticks on every broadcast, so it is excluded from the
-					// comparison — otherwise the 15s heartbeat would re-render
-					// the whole room for nothing.
+					// comparison — otherwise a broadcast that changed nothing
+					// would re-render the whole room for nothing.
 					if (
 						roomStateFingerprint(message.state) ===
 						roomStateFingerprint(roomState)
@@ -152,6 +153,7 @@ export default function useRoom({
 					setRoleCard({ role: message.role, deal: message.deal })
 					break
 				case 'partyserver-pong':
+				case 'heartbeatAck':
 				case 'e2eeMlsMessage':
 				case 'userLeftNotification':
 					// do nothing
@@ -176,13 +178,15 @@ export default function useRoom({
 		}
 	}, [websocket])
 
-	// setup a heartbeat
+	// The keepalive. The room never sees these: it hands the runtime the exact
+	// frame and its answer, so a ping is replied to while the room sleeps. That
+	// is only true of this exact string, which is why it is sent rather than
+	// built here.
 	useEffect(() => {
-		const interval = setInterval(() => {
-			websocket.send(
-				JSON.stringify({ type: 'heartbeat' } satisfies ClientMessage)
-			)
-		}, 5_000)
+		const interval = setInterval(
+			() => websocket.send(heartbeatPing),
+			heartbeatInterval
+		)
 
 		return () => clearInterval(interval)
 	}, [websocket])

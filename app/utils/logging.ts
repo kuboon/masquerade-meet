@@ -39,6 +39,13 @@ export type LogEvent =
 			eventName: 'userTimedOut'
 			meetingId?: string
 			connectionId: string
+			/**
+			 * Which way they went: `gone` is a socket that closed and never came
+			 * back inside its grace, `silent` one still open that stopped pinging.
+			 * Worth telling apart — a room full of `silent` would mean the
+			 * keepalive itself has broken.
+			 */
+			reason: 'gone' | 'silent'
 	  }
 	| {
 			eventName: 'hostReassigned'
