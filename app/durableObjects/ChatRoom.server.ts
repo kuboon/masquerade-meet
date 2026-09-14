@@ -11,6 +11,7 @@ import type {
 	StoredUser,
 	User,
 } from '~/types/Messages'
+import { heartbeatPing, heartbeatPong } from '~/types/Messages'
 import { assertError } from '~/utils/assertError'
 import assertNever from '~/utils/assertNever'
 import {
@@ -56,7 +57,29 @@ import {
 	type SessionDescription,
 } from '~/utils/openai.server'
 
-const alarmInterval = 15_000
+/**
+ * How long after a socket goes quiet the room stops believing in it.
+ *
+ * Comfortably more than the client's ping, so a dropped frame or a phone
+ * whose radio went away for a moment is not mistaken for somebody leaving.
+ */
+const idleTimeout = 60_000
+/**
+ * How long a seat is held for somebody whose socket has just closed.
+ *
+ * A reload closes the socket and opens another one a moment later, and the
+ * room should not notice.
+ */
+const disconnectGrace = 15_000
+/**
+ * A backstop sweep, for the socket that dies without ever saying so.
+ *
+ * Everything that normally empties a seat — a goodbye, a close, an error —
+ * wakes the room by itself, so this only has to be rare enough not to cost
+ * anything and often enough that a ghost does not sit in a meeting all
+ * afternoon.
+ */
+const sweepInterval = 10 * 60_000
 const defaultOpenAIModelID = 'gpt-4o-realtime-preview-2024-10-01'
 
 /** How long the "masks come off in..." countdown runs for. */
@@ -138,7 +161,17 @@ export class ChatRoom extends Server<Env> {
 	env: Env
 	db: DrizzleD1Database<Record<string, never>> | null
 
-	// static options = { hibernate: true }
+	/**
+	 * Keep the sockets, drop the room.
+	 *
+	 * Without this partyserver accepts sockets the ordinary way, which pins the
+	 * Durable Object in memory for as long as anybody is connected — a two-hour
+	 * meeting is billed as two hours of duration whether or not anybody says a
+	 * word. With it the sockets are handed to the runtime, the room is evicted
+	 * between events, and nothing here may assume that a field survives from one
+	 * handler to the next: everything a meeting knows lives in storage.
+	 */
+	static options = { hibernate: true }
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env)
@@ -155,25 +188,19 @@ export class ChatRoom extends Server<Env> {
 		const meetingId = await this.getMeetingId()
 		log({ eventName: 'onStart', meetingId })
 		this.db = getDb(this)
-		// TODO: make this a part of partyserver
-		// this.ctx.setWebSocketAutoResponse(
-		// 	new WebSocketRequestResponsePair(
-		// 		JSON.stringify({ type: 'partyserver-ping' }),
-		// 		JSON.stringify({ type: 'partyserver-pong' })
-		// 	)
-		// )
+		// The client's keepalive, answered by the runtime rather than by us. A
+		// ping that reached this object would wake it, and a room full of people
+		// pinging every few seconds never sleeps at all; answered out here it
+		// costs nothing and still leaves a timestamp behind to read.
+		this.ctx.setWebSocketAutoResponse(
+			new WebSocketRequestResponsePair(heartbeatPing, heartbeatPong)
+		)
 	}
 
 	async onConnect(
 		connection: Connection<User>,
 		ctx: ConnectionContext
 	): Promise<void> {
-		// let's start the periodic alarm if it's not already started
-		if (!(await this.ctx.storage.getAlarm())) {
-			// start the alarm to broadcast state every 30 seconds
-			this.ctx.storage.setAlarm(Date.now() + alarmInterval)
-		}
-
 		// May be null. The name is asked for in the lobby, and the meeting
 		// leaves behind anybody without one, so a seat starts out anonymous
 		// rather than refused.
@@ -228,7 +255,9 @@ export class ChatRoom extends Server<Env> {
 		if ((await this.ctx.storage.get<string>(HOST_KEY)) === undefined) {
 			await this.ctx.storage.put(HOST_KEY, connection.id)
 		}
-		await this.ctx.storage.put(`heartbeat-${connection.id}`, Date.now())
+		// Whatever grace was being held for them, they came back inside it.
+		await this.ctx.storage.delete(`disconnected-${connection.id}`)
+		await this.scheduleNextAlarm()
 		await this.trackPeakUserCount()
 		await this.broadcastRoomState()
 		// Whatever they were holding before the page reloaded. Nothing, for
@@ -539,9 +568,9 @@ export class ChatRoom extends Server<Env> {
 	 * Only when it is borrowed: a built-in set is already in the client's
 	 * bundle, and re-sending it would put a few kilobytes on the wire for
 	 * something every browser already has. Sent per connection rather than
-	 * broadcast in the room state, which goes out again every fifteen seconds
-	 * — a roster that rode along with it would be paid for over and over for
-	 * as long as the meeting lasted.
+	 * broadcast in the room state, which goes out again on every change — a
+	 * roster that rode along with it would be paid for over and over for as
+	 * long as the meeting lasted.
 	 */
 	private sendCharacterSet(connection: Connection, set: CharacterSet) {
 		if (isCharacterSetId(set.id)) return
@@ -821,6 +850,13 @@ export class ChatRoom extends Server<Env> {
 			reason,
 			wasClean,
 		})
+		// Not a departure yet: a reload closes the socket too, and the seat is
+		// theirs for a moment longer. Noting when it happened is what lets the
+		// room wake once, on the deadline, instead of watching for them.
+		if (await this.ctx.storage.get<StoredUser>(`session-${connection.id}`)) {
+			await this.ctx.storage.put(`disconnected-${connection.id}`, Date.now())
+			await this.scheduleNextAlarm()
+		}
 	}
 
 	async onMessage(
@@ -848,10 +884,10 @@ export class ChatRoom extends Server<Env> {
 							)
 						})
 					await this.ctx.storage
-						.delete(`heartbeat-${connection.id}`)
+						.delete(`disconnected-${connection.id}`)
 						.catch(() => {
 							console.warn(
-								`Failed to delete session session-heartbeat-${connection.id} on userLeft`
+								`Failed to delete disconnected-${connection.id} on userLeft`
 							)
 						})
 					log({ eventName: 'userLeft', meetingId, connectionId: connection.id })
@@ -1226,7 +1262,11 @@ export class ChatRoom extends Server<Env> {
 					break
 				}
 				case 'heartbeat': {
-					await this.ctx.storage.put(`heartbeat-${connection.id}`, Date.now())
+					// Ordinarily unreachable: the runtime answers this frame itself
+					// (see `onStart`) and it never gets this far. It is still handled
+					// so that a client holding an older bundle is not told its
+					// keepalive is an unknown message every few seconds. Arriving at
+					// all is proof of life, and that is all it was ever for.
 					break
 				}
 				case 'disableAi': {
@@ -1433,22 +1473,49 @@ export class ChatRoom extends Server<Env> {
 	}
 
 	/**
-	 * Normally a heartbeat tick, but during the reveal countdown we want the
-	 * alarm to land exactly when the masks drop so late-joining or reconnecting
-	 * clients are told about it immediately.
+	 * Wake the room next when it has a reason to wake, and not otherwise.
+	 *
+	 * Every wake is billed, so this is where the cost of an idle meeting is
+	 * decided. A room where everybody is connected and nothing is counting down
+	 * has only the backstop sweep ahead of it; the rest of the time it sleeps
+	 * while the runtime holds the sockets and answers their pings.
+	 *
+	 * The earliest deadline wins, so calling this can only ever bring the alarm
+	 * forward past something that already mattered — which is what makes it
+	 * safe to call from anywhere that changes one.
 	 */
 	async scheduleNextAlarm() {
+		// Read raw rather than through `getMasqueradeState`, which promotes a
+		// phase whose deadline has passed: deciding when to wake next should not
+		// itself move the meeting on.
 		const phase = await this.ctx.storage.get<RoomPhase>(PHASE_KEY)
 		const revealAt = await this.ctx.storage.get<number>(REVEAL_AT_KEY)
 		const startAt = await this.ctx.storage.get<number>(START_AT_KEY)
-		const heartbeatAt = Date.now() + alarmInterval
-		const deadlines = [
-			phase === 'revealing' ? revealAt : undefined,
-			// A room where the host presses go and everybody then sits still
-			// has nothing else to wake it, so the deadline has to.
-			phase === undefined || phase === 'lobby' ? startAt : undefined,
-		].filter((at): at is number => at !== undefined && at < heartbeatAt)
-		await this.ctx.storage.setAlarm(Math.min(heartbeatAt, ...deadlines))
+		const now = Date.now()
+
+		const deadlines: number[] = []
+		if (phase === 'revealing' && revealAt !== undefined)
+			deadlines.push(revealAt)
+		// A room where the host presses go and everybody then sits still has
+		// nothing else to wake it, so the deadline has to.
+		if ((phase === undefined || phase === 'lobby') && startAt !== undefined)
+			deadlines.push(startAt)
+		// Somebody's socket is gone and their seat is being held. The moment the
+		// grace runs out is the only moment anything needs to happen about it.
+		for (const [, at] of await this.ctx.storage.list<number>({
+			prefix: 'disconnected-',
+		})) {
+			deadlines.push(at + disconnectGrace)
+		}
+		// And the backstop, for the socket that dies without a word. Only worth
+		// setting while there is somebody to sweep up after.
+		if ((await this.getUsers()).size > 0) deadlines.push(now + sweepInterval)
+
+		if (deadlines.length === 0) {
+			await this.ctx.storage.deleteAlarm()
+			return
+		}
+		await this.ctx.storage.setAlarm(Math.max(now, Math.min(...deadlines)))
 	}
 
 	async endMeeting(meetingId: string) {
@@ -1472,34 +1539,73 @@ export class ChatRoom extends Server<Env> {
 		})
 	}
 
+	/**
+	 * When the runtime last answered this socket's ping on our behalf.
+	 *
+	 * The auto-response is what keeps a quiet room asleep, and the timestamp it
+	 * leaves behind is the only proof of life the room gets — nothing is written
+	 * to storage on a ping any more. `undefined` means no ping has been answered
+	 * for this socket yet, which is not the same as a dead one: a connection a
+	 * few seconds old has not sent its first.
+	 */
+	private lastPingedAt(connection: Connection): number | undefined {
+		return this.ctx
+			.getWebSocketAutoResponseTimestamp(connection as unknown as WebSocket)
+			?.getTime()
+	}
+
 	async cleanupOldConnections() {
 		const meetingId = await this.getMeetingId()
 		if (!meetingId) log({ eventName: 'meetingIdNotFoundInCleanup' })
 		const now = Date.now()
 		const users = await this.getUsers()
 		let removedUsers = 0
-		const connections = [...this.getConnections()]
+		// Built by hand rather than asked for one at a time: `getConnection`
+		// throws when two sockets share an id, and for a moment during a reload
+		// two of them do — the new one is open before the old one's close has
+		// been delivered. Either will do to prove somebody is there.
+		const live = new Map<string, Connection>()
+		for (const connection of this.getConnections()) {
+			if (!live.has(connection.id)) live.set(connection.id, connection)
+		}
 
 		for (const [key, user] of users) {
 			const connectionId = key.replace('session-', '')
-			const heartbeat = await this.ctx.storage.get<number>(
-				`heartbeat-${connectionId}`
+			const connection = live.get(connectionId)
+			const disconnectedAt = await this.ctx.storage.get<number>(
+				`disconnected-${connectionId}`
 			)
-			if (heartbeat === undefined || heartbeat + alarmInterval < now) {
-				this.userLeftNotification(connectionId)
-				removedUsers++
-				await this.ctx.storage.delete(key).catch(() => {
-					console.warn(
-						`Failed to delete session ${key} in cleanupOldConnections`
-					)
-				})
-
-				const connection = connections.find((c) => c.id === connectionId)
-				if (connection) {
-					connection.close(1011)
-				}
-				log({ eventName: 'userTimedOut', connectionId: user.id, meetingId })
+			let reason: 'gone' | 'silent'
+			if (connection === undefined) {
+				// No socket at all. Either it closed and the grace has run out, or
+				// it went without the room ever hearing about it.
+				if (
+					disconnectedAt !== undefined &&
+					disconnectedAt + disconnectGrace > now
+				)
+					continue
+				reason = 'gone'
+			} else {
+				const lastPing = this.lastPingedAt(connection)
+				// An open socket that has never pinged is believed: it may simply
+				// be new. One that pinged and then stopped is not.
+				if (lastPing === undefined || lastPing + idleTimeout > now) continue
+				reason = 'silent'
 			}
+
+			this.userLeftNotification(connectionId)
+			removedUsers++
+			await this.ctx.storage.delete(key).catch(() => {
+				console.warn(`Failed to delete session ${key} in cleanupOldConnections`)
+			})
+			await this.ctx.storage.delete(`disconnected-${connectionId}`)
+			connection?.close(1011)
+			log({
+				eventName: 'userTimedOut',
+				connectionId: user.id,
+				meetingId,
+				reason,
+			})
 		}
 
 		const activeUserCount = (await this.getUsers()).size
@@ -1521,9 +1627,11 @@ export class ChatRoom extends Server<Env> {
 		const meetingId = await this.getMeetingId()
 		log({ eventName: 'alarm', meetingId })
 		const activeUserCount = await this.cleanupOldConnections()
+		if (activeUserCount === 0) return
+		// The room is awake anyway, and it is most likely awake because a
+		// countdown just ran out. Broadcasting reads the phase, which is what
+		// promotes it, so this is how the masks actually come off.
 		await this.broadcastRoomState()
-		if (activeUserCount !== 0) {
-			await this.scheduleNextAlarm()
-		}
+		await this.scheduleNextAlarm()
 	}
 }

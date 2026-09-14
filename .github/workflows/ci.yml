@@ -49,7 +49,7 @@ jobs:
           npx playwright test
           voice-changer dev-voice entry still-image host-succession rejoining
           seating settings lobby character-lock roles assets latecomer
-          character-sets character-set-checker
+          character-sets character-set-checker hibernation
         env:
           # serve the built worker instead of the Remix watch-mode dev server
           PLAYWRIGHT_WEB_SERVER_COMMAND: npm start

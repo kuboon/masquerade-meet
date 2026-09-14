@@ -177,6 +177,15 @@ export type ServerMessage =
 			type: 'partyserver-pong'
 	  }
 	| {
+			/**
+			 * The answer to a `heartbeat`, sent by the Cloudflare runtime and not
+			 * by the room — see `heartbeatPong`. Nothing is expected to do
+			 * anything with it; it is here so that a client which does read it
+			 * knows the shape.
+			 */
+			type: 'heartbeatAck'
+	  }
+	| {
 			type: 'e2eeMlsMessage'
 			payload: string
 	  }
@@ -218,9 +227,9 @@ export type ServerMessage =
 			 * The roster this room borrowed from somebody else's site, sent to
 			 * each connection as it arrives and never again.
 			 *
-			 * Not part of the room state, which goes out to everybody every
-			 * fifteen seconds: a roster in there would be paid for on every
-			 * heartbeat for the length of the meeting. It arrives ahead of the
+			 * Not part of the room state, which goes out to everybody on every
+			 * change: a roster in there would be paid for again on every mute,
+			 * every raised hand and every name typed. It arrives ahead of the
 			 * first room state on the same socket, so `masquerade.characterSetId`
 			 * never names a roster the client does not yet have.
 			 *
@@ -347,3 +356,28 @@ export type ClientMessage =
 			type: 'e2eeMlsMessage'
 			payload: string
 	  }
+
+/**
+ * The keepalive, as the exact bytes on the wire.
+ *
+ * The room hands these two strings to the runtime as an auto-response pair, so
+ * that a ping is answered while the room sleeps rather than waking it. The
+ * runtime matches the frame literally: if the client built its ping any other
+ * way the match would silently fail and every ping would wake the room again,
+ * which is why both sides read the same constant.
+ */
+export const heartbeatPing = JSON.stringify({
+	type: 'heartbeat',
+} satisfies ClientMessage)
+export const heartbeatPong = JSON.stringify({
+	type: 'heartbeatAck',
+} satisfies ServerMessage)
+
+/**
+ * How often the client pings.
+ *
+ * Free of duration charges now that the runtime answers it, but still a
+ * message on the wire, so it is no faster than it has to be: the room only
+ * uses it to tell a live socket from a dead one.
+ */
+export const heartbeatInterval = 10_000

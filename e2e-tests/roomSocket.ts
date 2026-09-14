@@ -47,6 +47,15 @@ window.__room = {
 	send(id, message) {
 		window.__room.sockets[id].send(JSON.stringify(message))
 	},
+	drop(id) {
+		// Gone without a word, the way a closed laptop goes: no goodbye, just a
+		// socket that is not there any more.
+		const ws = window.__room.sockets[id]
+		clearInterval(ws.__beat)
+		ws.close()
+		delete window.__room.sockets[id]
+		delete window.__room.state[id]
+	},
 	leave(id) {
 		const ws = window.__room.sockets[id]
 		clearInterval(ws.__beat)
@@ -126,6 +135,10 @@ export const card = (page: Page, id: string) =>
 export const leave = (page: Page, id: string) =>
 	page.evaluate((id) => window.__room.leave(id), id)
 
+/** Closes a socket without the goodbye that empties a seat straight away. */
+export const drop = (page: Page, id: string) =>
+	page.evaluate((id) => window.__room.drop(id), id)
+
 /**
  * A meeting under way, with everybody already seated.
  *
@@ -158,7 +171,9 @@ declare global {
 		__room: {
 			open(room: string, id: string, query?: string): Promise<string>
 			send(id: string, message: unknown): void
+			drop(id: string): void
 			leave(id: string): void
+			sockets: Record<string, WebSocket>
 			state: Record<string, any>
 			cards: Record<string, any>
 			sets: Record<string, any>
