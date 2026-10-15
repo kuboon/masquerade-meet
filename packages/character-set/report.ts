@@ -65,12 +65,14 @@ export function describeVoice(voice: {
 	nasal: number
 	roughness: number
 	throat?: number
+	flatten?: number
 }): string {
 	const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}`
 	const parts = [`${signed(voice.size * VOICE_RANGE.sizeSemitones)}半音`]
 	const throat = (voice.throat ?? 0) * VOICE_RANGE.throatSemitones
 	if (throat !== 0) parts.push(`口 ${signed(throat)}半音`)
 	if (voice.roughness > 0) parts.push(`かすれ ${voice.roughness}`)
+	if ((voice.flatten ?? 0) > 0) parts.push(`抑揚 ${voice.flatten}`)
 	return parts.join(' / ')
 }
 

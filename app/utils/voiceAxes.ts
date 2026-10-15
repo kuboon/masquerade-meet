@@ -42,11 +42,12 @@ export const VOICE_AXES = [
 }[]
 
 /**
- * Everything a character can be, which is one more than a person is offered.
+ * Everything a character can be, which is two more than a person is offered.
  *
  * `throat` has no slider in the lobby on purpose — see the note on it in
  * `characters.ts` — but the tuner is where character voices are written, so
- * it has to be able to reach every part of one.
+ * it has to be able to reach every part of one. `flatten` is experimental
+ * and lives here for the same reason.
  */
 export const TUNING_AXES = [
 	...VOICE_AXES,
@@ -55,6 +56,13 @@ export const TUNING_AXES = [
 		label: '口の大きさ（キャラ専用）',
 		unit: '大きな口 ↔ 小さな口',
 		min: -1,
+		max: 1,
+	},
+	{
+		key: 'flatten',
+		label: '抑揚のならし（キャラ専用・試験中）',
+		unit: 'そのまま ↔ 一本調子',
+		min: 0,
 		max: 1,
 	},
 ] as const satisfies readonly {

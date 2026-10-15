@@ -75,6 +75,12 @@ export interface EngineParams {
 	lowGain: number
 	midGain: number
 	highGain: number
+	/**
+	 * How much of the speaker's inflection the shift bends against, 0–1.
+	 * `semitones` is then the shift at the speaker's own middle, and the
+	 * live shift moves away from it as they rise and fall — see `pitch.ts`.
+	 */
+	flatten: number
 }
 
 /**
@@ -103,5 +109,6 @@ export function toEngineParams(params: VoiceParams): EngineParams {
 		lowGain: -params.weight * VOICE_RANGE.weightDb,
 		highGain: params.weight * VOICE_RANGE.weightDb,
 		midGain: params.nasal * VOICE_RANGE.nasalDb,
+		flatten: Math.max(0, Math.min(1, params.flatten ?? 0)),
 	}
 }

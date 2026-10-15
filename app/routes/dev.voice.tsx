@@ -39,13 +39,18 @@ function voiceParamsEqual(a: VoiceParams, b: VoiceParams) {
 
 /** The same shape the character files are written in, ready to paste. */
 function toSource(v: VoiceParams) {
-	const args = [v.size, v.weight, v.nasal, v.roughness, v.throat ?? 0].map(
-		round
-	)
-	// The last two are optional in the helper, and most characters are a
-	// clean voice out of a matching throat. Trailing zeroes come off, but
-	// only trailing ones: a character with a throat and no rasp still has to
-	// write the rasp to reach past it.
+	const args = [
+		v.size,
+		v.weight,
+		v.nasal,
+		v.roughness,
+		v.throat ?? 0,
+		v.flatten ?? 0,
+	].map(round)
+	// The last three are optional in the helper, and most characters are a
+	// clean voice out of a matching throat with its inflection left alone.
+	// Trailing zeroes come off, but only trailing ones: a character with a
+	// throat and no rasp still has to write the rasp to reach past it.
 	while (args.length > 3 && args[args.length - 1] === 0) args.pop()
 	return `voice: voice(${args.join(', ')}),`
 }
@@ -105,6 +110,7 @@ export default function DevVoice() {
 		bypass,
 		setBypass,
 		error,
+		pitch,
 	} = preview
 
 	const update = (next: VoiceParams) =>
@@ -283,6 +289,16 @@ export default function DevVoice() {
 							onChange={setField(axis.key)}
 						/>
 					))}
+					<p
+						className="font-mono text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
+						aria-label="ピッチ追跡"
+					>
+						{pitch
+							? `検出 ${pitch.voiced ? pitch.f0.toFixed(0) + ' Hz' : '—'} ／ ` +
+								`自分の真ん中 ${pitch.centreHz ? pitch.centreHz.toFixed(0) + ' Hz' : '—'} ／ ` +
+								`いまのシフト ${pitch.semitones >= 0 ? '+' : ''}${pitch.semitones.toFixed(1)} 半音`
+							: 'ピッチ追跡: 再生すると表示されます'}
+					</p>
 				</div>
 			</div>
 

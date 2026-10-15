@@ -30,10 +30,10 @@ test('records a loop and disguises it', async ({ page }) => {
 	await page.getByRole('button', { name: 'ループ再生' }).click()
 	await expect(page.getByRole('button', { name: '再生を止める' })).toBeVisible()
 
-	// Five here against the lobby's four: the tuner is where character
-	// voices are written, so it reaches the one axis a character has and a
-	// person is never offered.
-	await expect(page.getByRole('slider')).toHaveCount(5)
+	// Six here against the lobby's four: the tuner is where character voices
+	// are written, so it reaches the axes a character has and a person is
+	// never offered.
+	await expect(page.getByRole('slider')).toHaveCount(6)
 
 	// Moving one edits the selected character's draft and shows up in the
 	// paste-ready snippet, written the way the character files are.

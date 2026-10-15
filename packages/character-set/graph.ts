@@ -8,13 +8,14 @@
  * build in and somewhere to fetch the pitch shifter from.
  *
  * ```
- * input → stretch → ring → low → mid → high → output
- *                    ↑
- *          carrier → depth
+ * input → tracker → stretch → ring → low → mid → high → output
+ *            ╎         ↑         ↑
+ *            └─ f0 ─ shift   carrier → depth
  * ```
  */
 
 import type { VoiceParams } from './mod.ts'
+import { PitchFollower } from './pitch.ts'
 import { toEngineParams } from './voice.ts'
 
 // Short enough to feel instant, long enough to avoid a click.
@@ -47,6 +48,35 @@ export const STRETCH_BLOCK_MS = 60
  */
 export const DEFAULT_STRETCH_URL =
 	'https://masq.kbn.one/voice/SignalsmithStretch.mjs'
+
+/**
+ * Where the pitch tracker is served from. Served for the same reason as the
+ * shifter: a worklet is loaded by URL, not imported. Small, and only ever
+ * fetched beside the shifter.
+ */
+export const DEFAULT_PITCH_TRACKER_URL =
+	'https://masq.kbn.one/voice/pitch-tracker-worklet.js'
+
+/** What the tracker posts after every hop. */
+export interface PitchReading {
+	/** Hz; only meaningful when `voiced` */
+	f0: number
+	voiced: boolean
+	rms: number
+	/** context time at the end of the window it was read from */
+	time: number
+}
+
+/**
+ * What the graph is doing about the pitch right now, for anybody tuning a
+ * voice by ear and wanting to see what the numbers are.
+ */
+export interface PitchState extends PitchReading {
+	/** where the speaker's own voice sits, once they have spoken */
+	centreHz: number | undefined
+	/** the shift the shifter was just asked for */
+	semitones: number
+}
 
 /** The part of the shifter's interface this graph uses. */
 export interface StretchNode extends AudioWorkletNode {
@@ -116,6 +146,8 @@ export interface VoiceGraph<C extends BaseAudioContext = BaseAudioContext> {
 	input: AudioNode
 	/** and take the disguised signal from here */
 	output: AudioNode
+	/** the pitch tracker ahead of the shifter; absent if it failed to load */
+	tracker: AudioWorkletNode | undefined
 	stretch: StretchNode
 	carrier: OscillatorNode
 	/** scales the carrier, and so how deep the modulation goes */
@@ -125,16 +157,41 @@ export interface VoiceGraph<C extends BaseAudioContext = BaseAudioContext> {
 	low: BiquadFilterNode
 	mid: BiquadFilterNode
 	high: BiquadFilterNode
+	/** keeps up with the speaker; survives a change of voice */
+	follower: PitchFollower
+	/** Called after every reading, if anybody wants to watch. */
+	onPitch?: (state: PitchState) => void
 }
 
 /**
- * Builds the chain: pitch shifter, ring modulator, three-band tone stack.
+ * The part of a voice the follower works from, kept beside the graph so
+ * that a reading arriving between two `applyVoiceParams` calls knows what
+ * it is bending.
+ */
+interface Following {
+	base: number
+	flatten: number
+	/** how far ahead to schedule, so a change lands on the audio it was read from */
+	latency: number
+}
+
+const following = new WeakMap<VoiceGraph, Following>()
+
+/**
+ * Builds the chain: pitch tracker, pitch shifter, ring modulator, three-band
+ * tone stack.
  *
  * ```
- * input → stretch → ring → low → mid → high → output
- *                    ↑
- *          carrier → depth
+ * input → tracker → stretch → ring → low → mid → high → output
+ *            ╎         ↑         ↑
+ *            └─ f0 ─ shift   carrier → depth
  * ```
+ *
+ * The tracker passes the audio straight through and reports the speaker's
+ * pitch; the graph turns each reading into a shift and schedules it on the
+ * shifter, ahead by the shifter's own latency so it lands on the audio it
+ * was read from. At `flatten` 0 nothing is scheduled and the shifter holds
+ * the base shift, exactly as it did before there was a tracker.
  *
  * The ring modulator is a multiply, spelled the way Web Audio spells one: an
  * oscillator summed into a gain's own value, so the signal comes out as
@@ -146,6 +203,7 @@ export async function createVoiceGraph<C extends BaseAudioContext>(
 	{
 		voice,
 		stretchUrl = DEFAULT_STRETCH_URL,
+		pitchTrackerUrl = DEFAULT_PITCH_TRACKER_URL,
 	}: {
 		/**
 		 * The voice to start on. Required rather than defaulted, because a
@@ -155,6 +213,11 @@ export async function createVoiceGraph<C extends BaseAudioContext>(
 		voice: VoiceParams
 		/** where to fetch the pitch shifter from */
 		stretchUrl?: string
+		/**
+		 * where to fetch the pitch tracker from, or `null` to build the graph
+		 * without one — in which case `flatten` does nothing
+		 */
+		pitchTrackerUrl?: string | null
 	}
 ): Promise<VoiceGraph<C>> {
 	const SignalsmithStretch = await loadStretch(stretchUrl)
@@ -170,6 +233,22 @@ export async function createVoiceGraph<C extends BaseAudioContext>(
 		// respect start dropping audio.
 		splitComputation: true,
 	})
+
+	let tracker: AudioWorkletNode | undefined
+	if (pitchTrackerUrl !== null) {
+		try {
+			await context.audioWorklet.addModule(pitchTrackerUrl)
+			tracker = new AudioWorkletNode(context, 'masquerade-pitch-tracker', {
+				numberOfInputs: 1,
+				numberOfOutputs: 1,
+				outputChannelCount: [1],
+			})
+		} catch (error) {
+			// A disguise without the follower is still a disguise. Say so in
+			// the console, and go on without it.
+			console.error('pitch tracker unavailable; flatten will do nothing', error)
+		}
+	}
 
 	const ring = context.createGain()
 	const depth = context.createGain()
@@ -195,12 +274,14 @@ export async function createVoiceGraph<C extends BaseAudioContext>(
 	high.frequency.value = 3200
 	high.gain.value = 0
 
+	tracker?.connect(stretch)
 	stretch.connect(ring).connect(low).connect(mid).connect(high)
 
 	const graph: VoiceGraph<C> = {
 		context,
-		input: stretch,
+		input: tracker ?? stretch,
 		output: high,
+		tracker,
 		stretch,
 		carrier,
 		depth,
@@ -208,6 +289,17 @@ export async function createVoiceGraph<C extends BaseAudioContext>(
 		low,
 		mid,
 		high,
+		follower: new PitchFollower(),
+	}
+	const engine = toEngineParams(voice)
+	following.set(graph, {
+		base: engine.semitones,
+		flatten: engine.flatten,
+		latency: await stretch.latency(),
+	})
+	if (tracker) {
+		tracker.port.onmessage = (event: MessageEvent<PitchReading>) =>
+			follow(graph, event.data)
 	}
 	// Awaited, unlike every later retarget: `schedule` crosses to the worklet
 	// as a message, and until the first one lands the node is not processing
@@ -216,6 +308,41 @@ export async function createVoiceGraph<C extends BaseAudioContext>(
 	// real time in it for the message to arrive, does every few runs.
 	await applyVoiceParams(graph, voice)
 	return graph
+}
+
+/**
+ * One reading in, one shift out.
+ *
+ * Scheduled against the time the reading was taken plus the shifter's
+ * latency: the shifter compensates for its own delay when told when a
+ * change is for, so this puts the new shift on the audio the pitch was read
+ * from rather than on whatever is leaving the shifter at the moment the
+ * message lands. Not scheduled at all when there is nothing to bend, so a
+ * voice with no `flatten` costs the shifter no messages.
+ */
+function follow(graph: VoiceGraph, reading: PitchReading) {
+	const state = following.get(graph)
+	if (!state) return
+	graph.follower.observe(reading.f0, reading.voiced)
+	const semitones = graph.follower.shift(state.base, state.flatten)
+	if (state.flatten > 0) {
+		const output = reading.time + state.latency
+		graph.stretch
+			// `output` is the documented field and is what the change is stamped
+			// with; `outputTime` is what the shifter actually sorts by when it
+			// decides which earlier changes this one replaces. Without it every
+			// change still waiting its turn is thrown away by the next one, and
+			// at forty-seven a second none of them ever lands.
+			.schedule({ output, outputTime: output, semitones } as Parameters<
+				StretchNode['schedule']
+			>[0])
+			.catch(() => {})
+	}
+	graph.onPitch?.({
+		...reading,
+		centreHz: graph.follower.centreHz,
+		semitones,
+	})
 }
 
 function ramp(param: AudioParam, value: number, now: number) {
@@ -235,11 +362,21 @@ export function applyVoiceParams(
 	const now = graph.context.currentTime
 	const engine = toEngineParams(params)
 
+	// What the follower bends from now on. The follower itself is left alone:
+	// the speaker has not changed, only the mask.
+	const state = following.get(graph)
+	if (state) {
+		state.base = engine.semitones
+		state.flatten = engine.flatten
+	}
+
 	// The shifter eases into a scheduled change by itself, so this is the one
 	// control that does not want a ramp of ours on top.
 	const scheduled = graph.stretch.schedule({
 		active: true,
-		semitones: engine.semitones,
+		// Where the follower has it at this moment, so that switching masks
+		// mid-sentence does not snap to the base and then bend back.
+		semitones: graph.follower.shift(engine.semitones, engine.flatten),
 		// Always compensated, so that `formantSemitones` is measured from
 		// where the formants started rather than from the shifted pitch. That
 		// makes "travel with the pitch" the case where the two numbers are
@@ -272,6 +409,12 @@ export function disposeVoiceGraph(graph: VoiceGraph): void {
 		graph.carrier.stop()
 	} catch {
 		// Already stopped, which is not worth caring about on the way out.
+	}
+	following.delete(graph)
+	if (graph.tracker) {
+		graph.tracker.port.onmessage = null
+		graph.tracker.port.close()
+		graph.tracker.disconnect()
 	}
 	for (const node of [
 		graph.stretch,

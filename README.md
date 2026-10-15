@@ -17,7 +17,9 @@ Cloudflare の [Orange Meets](https://github.com/cloudflare/orange) をベース
 
 `public/voice/voice-changer-worklet.js` の AudioWorklet が、マイクの音声をリアルタイムに変換します。
 
-ピッチシフトは古典的な 2 タップ・ディレイライン方式です。リングバッファを 2 本の読み出しタップが追いかけ、その遅延量が `1 - pitchRatio` に比例して変化します。各タップはレイズドコサイン窓でクロスフェードされ、2 つの窓は半周期ずれているため常に合計がちょうど 1 になります。フォルマントもピッチと一緒に動くので、変装としてはむしろ好都合です。
+ピッチシフトは [Signalsmith Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch)（WASM）で、60ms のブロックでフォルマント込みで動かします。
+
+その手前に自前のピッチ追跡ワークレット（`public/voice/pitch-tracker-worklet.js`、YIN）が入っていて、キャラクターの `flatten` が 0 より大きいときは、話し手が自分の声の真ん中から上下した分だけシフト量を逆に曲げます（`packages/character-set/pitch.ts`）。声の高さは `size` で変えても、上がり下がりの幅はその人のままなので、それをならして「その人らしさ」をもう一段削る狙いです。試験中で、既定は 0（従来どおり固定シフト）です。
 
 その上に、キャラクターごとの個性としてビブラート LFO とリングモジュレーターを重ね、さらに main thread 側の 3 バンド EQ（`app/utils/voiceChanger.ts`）で音色を調整しています。
 

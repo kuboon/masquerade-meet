@@ -36,6 +36,7 @@ const silentStart: VoiceParams = {
 	nasal: 0,
 	roughness: 0,
 	throat: 0,
+	flatten: 0,
 }
 
 export interface VoicePreview {

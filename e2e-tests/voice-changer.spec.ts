@@ -201,7 +201,95 @@ async function render(semitones) {
 	}
 }
 
-return { render, renderWith }
+/**
+ * The tracker's readings for a tone, voiced or not. The tone can glide, which
+ * is what a voice does and a steady test tone does not.
+ */
+async function track(fromHz, toHz, seconds = 2) {
+	const ctx = new OfflineAudioContext(1, SR * seconds, SR)
+	const src = source(ctx)
+	src.osc.frequency.setValueAtTime(fromHz, 0)
+	src.osc.frequency.linearRampToValueAtTime(toHz, seconds)
+	await ctx.audioWorklet.addModule('/voice/pitch-tracker-worklet.js')
+	const tracker = new AudioWorkletNode(ctx, 'masquerade-pitch-tracker', {
+		numberOfInputs: 1,
+		numberOfOutputs: 1,
+		outputChannelCount: [1],
+	})
+	const readings = []
+	tracker.port.onmessage = (e) => readings.push(e.data)
+	src.out.connect(tracker).connect(ctx.destination)
+	src.osc.start()
+	const rendered = (await ctx.startRendering()).getChannelData(0)
+	// The readings were posted during the render; give them a turn to land.
+	await new Promise((r) => setTimeout(r, 50))
+	let worst = 0
+	for (let i = 0; i < rendered.length; i++) {
+		worst = Math.max(worst, Math.abs(rendered[i]))
+	}
+	return { readings, peak: worst }
+}
+
+/**
+ * The whole loop, the way the graph runs it: tracker readings turned into
+ * a shift and scheduled on the shifter ahead by its latency, against a tone
+ * that glides up an octave. Rendered offline, which has no real time in it
+ * for a message to cross and come back — so the render is suspended every
+ * quantum to give them one, which is a trick the room never needs and the
+ * test cannot do without.
+ *
+ * The follower here is the simplest one that could work: the first voiced
+ * reading is the middle, and the shift cancels every move away from it. The
+ * real one is arithmetic with its own unit tests; this is about whether a
+ * shift scheduled from a reading lands on the shifter at all.
+ */
+async function flattenGlide(fromHz, toHz, seconds = 2) {
+	const ctx = new OfflineAudioContext(1, SR * seconds, SR)
+	const src = source(ctx)
+	src.osc.frequency.setValueAtTime(fromHz, 0)
+	src.osc.frequency.linearRampToValueAtTime(toHz, seconds)
+	await ctx.audioWorklet.addModule('/voice/pitch-tracker-worklet.js')
+	const tracker = new AudioWorkletNode(ctx, 'masquerade-pitch-tracker', {
+		numberOfInputs: 1,
+		numberOfOutputs: 1,
+		outputChannelCount: [1],
+	})
+	const mod = await import('/voice/SignalsmithStretch.mjs')
+	const node = await mod.default(ctx, {
+		numberOfInputs: 1,
+		numberOfOutputs: 1,
+		outputChannelCount: [1],
+	})
+	await node.configure({ blockMs: ${BLOCK_MS}, splitComputation: true })
+	await node.schedule({ active: true, semitones: 0, formantCompensation: true, formantSemitones: 0 })
+	const latency = await node.latency()
+	let centre
+	let scheduled = 0
+	tracker.port.onmessage = (e) => {
+		const { f0, voiced, time } = e.data
+		if (!voiced) return
+		const st = 12 * Math.log2(f0)
+		if (centre === undefined) centre = st
+		scheduled++
+		const output = time + latency
+		node.schedule({ output, outputTime: output, semitones: centre - st })
+	}
+	src.out.connect(tracker).connect(node).connect(ctx.destination)
+	src.osc.start()
+	const quantum = 1024 / SR
+	for (let t = quantum; t < seconds; t += quantum) {
+		ctx.suspend(t).then(async () => {
+			await new Promise((r) => setTimeout(r, 0))
+			await new Promise((r) => setTimeout(r, 0))
+			await ctx.resume()
+		})
+	}
+	const rendered = (await ctx.startRendering()).getChannelData(0)
+	const at = (second) => detectPitch(rendered.slice(SR * second, SR * second + 16384))
+	return { early: at(0.5), late: at(seconds - 0.4), scheduled }
+}
+
+return { render, renderWith, track, flattenGlide }
 })()
 `
 
@@ -305,6 +393,75 @@ test.describe('voice changer', () => {
 		expect(small.pitch).toBeLessThan(matching.pitch * 1.03)
 		// Out of a much smaller mouth.
 		expect(small.centroid).toBeGreaterThan(matching.centroid * 1.15)
+	})
+
+	test('hears the pitch of a held note', async ({ page }) => {
+		await page.addScriptTag({ content: HARNESS })
+		const { readings, peak } = await page.evaluate(() =>
+			(window as any).__voice.track(150, 150)
+		)
+		// Passed straight through, as loud as it went in.
+		expect(peak).toBeGreaterThan(0.05)
+		// One every 21 ms, less the window it has to fill first.
+		expect(readings.length).toBeGreaterThan(80)
+		const settled = readings.slice(readings.length / 2)
+		for (const reading of settled) {
+			expect(reading.voiced).toBe(true)
+			expect(reading.f0).toBeGreaterThan(150 * 0.97)
+			expect(reading.f0).toBeLessThan(150 * 1.03)
+		}
+	})
+
+	test('follows a voice up an octave', async ({ page }) => {
+		await page.addScriptTag({ content: HARNESS })
+		const { readings } = await page.evaluate(() =>
+			(window as any).__voice.track(120, 240)
+		)
+		const voiced = readings.filter((r: any) => r.voiced)
+		expect(voiced.length).toBeGreaterThan(80)
+		// Read against the tone's own ramp at the moment it was read, with
+		// room for the window being behind the newest sample.
+		for (const reading of voiced) {
+			const expected = 120 + (240 - 120) * (reading.time / 2)
+			expect(reading.f0).toBeGreaterThan(expected * 0.93)
+			expect(reading.f0).toBeLessThan(expected * 1.03)
+		}
+	})
+
+	test('says nothing about silence', async ({ page }) => {
+		await page.addScriptTag({ content: HARNESS })
+		const { readings } = await page.evaluate(async () => {
+			const ctx = new OfflineAudioContext(1, 48000, 48000)
+			await ctx.audioWorklet.addModule('/voice/pitch-tracker-worklet.js')
+			const tracker = new AudioWorkletNode(ctx, 'masquerade-pitch-tracker')
+			const readings: any[] = []
+			tracker.port.onmessage = (e) => readings.push(e.data)
+			const silence = ctx.createConstantSource()
+			silence.offset.value = 0
+			silence.connect(tracker).connect(ctx.destination)
+			silence.start()
+			await ctx.startRendering()
+			await new Promise((r) => setTimeout(r, 50))
+			return { readings }
+		})
+		expect(readings.length).toBeGreaterThan(30)
+		for (const reading of readings) expect(reading.voiced).toBe(false)
+	})
+
+	test('holds a gliding voice on one note when told to flatten it', async ({
+		page,
+	}) => {
+		await page.addScriptTag({ content: HARNESS })
+		const { early, late, scheduled } = await page.evaluate(() =>
+			(window as any).__voice.flattenGlide(120, 240)
+		)
+		expect(scheduled).toBeGreaterThan(40)
+		// Without the follower these would be 150 Hz and 216 Hz. With it,
+		// both sit where the voice started.
+		expect(early).toBeGreaterThan(120 * 0.94)
+		expect(early).toBeLessThan(120 * 1.06)
+		expect(late).toBeGreaterThan(120 * 0.94)
+		expect(late).toBeLessThan(120 * 1.06)
 	})
 
 	test('stays close enough behind to hold a conversation', async ({ page }) => {

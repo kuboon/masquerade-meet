@@ -231,6 +231,7 @@ function parseVoice(
 	const roughness =
 		number(input.roughness, `${at}.roughness`, 0, 1, problems) ?? 0
 	const throat = number(input.throat, `${at}.throat`, -1, 1, problems) ?? 0
+	const flatten = number(input.flatten, `${at}.flatten`, 0, 1, problems) ?? 0
 	if (problems.length > before) return undefined
 
 	const voice: VoiceParams = {
@@ -239,6 +240,7 @@ function parseVoice(
 		nasal: nasal!,
 		roughness,
 		throat,
+		flatten,
 	}
 	// The point of the whole app. A set that leaves somebody recognisable is
 	// worse than no set at all, because they will not know.

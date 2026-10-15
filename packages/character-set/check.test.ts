@@ -73,6 +73,23 @@ describe('checkCharacterSet', () => {
 		expect(set?.characters[1].tagline).toBe('')
 		expect(set?.characters[1].voice.roughness).toBe(0)
 		expect(set?.characters[1].voice.throat).toBe(0)
+		expect(set?.characters[1].voice.flatten).toBe(0)
+	})
+
+	it('reads how far a voice is flattened, within its range', () => {
+		const document = good()
+		document.characters[0].voice = {
+			...document.characters[0].voice,
+			flatten: 0.6,
+		} as (typeof document.characters)[0]['voice']
+		expect(parse(document).set?.characters[0].voice.flatten).toBe(0.6)
+
+		const over = good()
+		over.characters[0].voice = {
+			...over.characters[0].voice,
+			flatten: 1.5,
+		} as (typeof over.characters)[0]['voice']
+		expect(parse(over).problems.join('\n')).toContain('flatten')
 	})
 
 	it('refuses a voice that is not a disguise', () => {

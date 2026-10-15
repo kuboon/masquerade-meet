@@ -33,12 +33,19 @@ import { neutralVoice, type VoiceParams } from './characters'
  */
 export const STRETCH_URL = '/voice/SignalsmithStretch.mjs'
 
+/**
+ * The pitch tracker that sits ahead of the shifter, served for the same
+ * reasons — it is a worklet, so it is loaded by URL either way.
+ */
+export const PITCH_TRACKER_URL = '/voice/pitch-tracker-worklet.js'
+
 export {
 	applyVoiceParams,
 	createVoiceGraph,
 	disposeVoiceGraph,
 	NASAL_FREQUENCY,
 	STRETCH_BLOCK_MS,
+	type PitchState,
 	type VoiceGraph,
 } from '@kuboon/masquerade-character-set/graph'
 export {
@@ -51,6 +58,7 @@ export function createAppVoiceGraph<C extends BaseAudioContext>(context: C) {
 	return createVoiceGraph(context, {
 		voice: voiceParams$.value,
 		stretchUrl: STRETCH_URL,
+		pitchTrackerUrl: PITCH_TRACKER_URL,
 	})
 }
 
