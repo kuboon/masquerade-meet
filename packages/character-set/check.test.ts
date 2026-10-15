@@ -78,17 +78,11 @@ describe('checkCharacterSet', () => {
 
 	it('reads how far a voice is flattened, within its range', () => {
 		const document = good()
-		document.characters[0].voice = {
-			...document.characters[0].voice,
-			flatten: 0.6,
-		} as (typeof document.characters)[0]['voice']
+		Object.assign(document.characters[0].voice, { flatten: 0.6 })
 		expect(parse(document).set?.characters[0].voice.flatten).toBe(0.6)
 
 		const over = good()
-		over.characters[0].voice = {
-			...over.characters[0].voice,
-			flatten: 1.5,
-		} as (typeof over.characters)[0]['voice']
+		Object.assign(over.characters[0].voice, { flatten: 1.5 })
 		expect(parse(over).problems.join('\n')).toContain('flatten')
 	})
 
