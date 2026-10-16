@@ -131,15 +131,19 @@ export default function useMasquerade({
 	// characters or dropping the mask is seamless.
 	//
 	// Whatever they tuned wins over whatever the character says — on the four
-	// axes they were offered. `throat` is not one of them: it belongs to the
-	// mask rather than to the body behind it, so it survives the tuning
-	// instead of being flattened to zero by a slider that cannot reach it.
+	// axes they were offered. `throat` and `flatten` are not among them: they
+	// belong to the mask rather than to the body behind it, so they survive
+	// the tuning instead of being flattened to zero by a slider that cannot
+	// reach them.
 	const [myVoice, setMyVoice, clearMyVoice] = useMyVoice()
 	const throat = character?.voice.throat
+	const flatten = character?.voice.flatten
 	const wornVoice = useMemo(
 		() =>
-			myVoice ? { ...myVoice, throat } : (character?.voice ?? neutralVoice),
-		[myVoice, throat, character]
+			myVoice
+				? { ...myVoice, throat, flatten }
+				: (character?.voice ?? neutralVoice),
+		[myVoice, throat, flatten, character]
 	)
 	useEffect(() => {
 		setVoiceParams(revealed || !character ? neutralVoice : wornVoice)

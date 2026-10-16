@@ -86,6 +86,21 @@ export interface VoiceParams {
 	 * Optional; absent means 0.
 	 */
 	throat?: number
+	/**
+	 * How much of the speaker's own inflection to take out. 0 leaves the
+	 * voice rising and falling as it does; 1 holds it on one note.
+	 *
+	 * A fixed shift moves a voice but keeps the shape of everything it says
+	 * — the lift at a question, how far it wanders — and that shape is as
+	 * much a signature as the pitch. This follows the pitch as they speak
+	 * and bends the shift against it, so the voice settles around the
+	 * character's pitch instead of carrying the speaker's up and down with
+	 * it. Partway is a voice with some expression left and a narrower range
+	 * than the person behind it has.
+	 *
+	 * Experimental. Optional; absent means 0.
+	 */
+	flatten?: number
 }
 
 /**
@@ -106,6 +121,8 @@ export interface VoiceDocument {
 	roughness?: number
 	/** see {@link VoiceParams.throat}. Optional; absent means 0. */
 	throat?: number
+	/** see {@link VoiceParams.flatten}. Optional; absent means 0. */
+	flatten?: number
 }
 
 /** One character, as you write it. */

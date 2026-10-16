@@ -4,6 +4,7 @@ import {
 	applyVoiceParams,
 	createAppVoiceGraph,
 	disposeVoiceGraph,
+	type PitchState,
 	type VoiceGraph,
 } from '~/utils/voiceChanger'
 
@@ -33,6 +34,10 @@ export default function useVoicePreview(voice: VoiceParams) {
 	const [playing, setPlaying] = useState(false)
 	const [bypass, setBypass] = useState(false)
 	const [error, setError] = useState<string>()
+	// What the tracker is seeing, at a rate the eye can follow rather than
+	// the forty-odd readings a second it produces.
+	const [pitch, setPitch] = useState<PitchState>()
+	const lastShownRef = useRef(0)
 
 	const graphRef = useRef<VoiceGraph<AudioContext>>()
 	const bufferRef = useRef<AudioBuffer>()
@@ -48,6 +53,12 @@ export default function useVoicePreview(voice: VoiceParams) {
 		const context = new AudioContext()
 		const graph = await createAppVoiceGraph(context)
 		graph.output.connect(context.destination)
+		graph.onPitch = (state) => {
+			const now = performance.now()
+			if (now - lastShownRef.current < 100) return
+			lastShownRef.current = now
+			setPitch(state)
+		}
 		graphRef.current = graph
 		return graph
 	}, [])
@@ -172,5 +183,6 @@ export default function useVoicePreview(voice: VoiceParams) {
 		bypass,
 		setBypass,
 		error,
+		pitch,
 	}
 }

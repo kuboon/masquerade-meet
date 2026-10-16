@@ -45,10 +45,12 @@ export function voice(
 	weight: number,
 	nasal: number,
 	roughness = 0,
-	/** last because it has no slider to appear on */
-	throat = 0
+	/** after the sliders, because it has none to appear on */
+	throat = 0,
+	/** last, and experimental */
+	flatten = 0
 ): VoiceParams {
-	return { size, weight, nasal, roughness, throat }
+	return { size, weight, nasal, roughness, throat, flatten }
 }
 
 /** The voice applied when nobody is hiding: a straight passthrough. */
