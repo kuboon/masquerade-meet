@@ -3,6 +3,22 @@ module.exports = {
 	content: ['./app/**/*.{js,jsx,ts,tsx}'],
 	theme: {
 		extend: {
+			// The landing page's palette, lifted from its illustration: a warm
+			// paper background, navy ink, and the three mask colours.
+			colors: {
+				mm: {
+					paper: '#FCF7EF',
+					ink: '#1A1D45',
+					coral: '#EE5A47',
+					teal: '#1AA39A',
+					sun: '#F2B12F',
+					blue: '#2F5BD8',
+				},
+			},
+			fontFamily: {
+				landing: ['"Noto Sans JP"', 'system-ui', 'sans-serif'],
+				logo: ['Outfit', '"Noto Sans JP"', 'system-ui', 'sans-serif'],
+			},
 			keyframes: {
 				fadeIn: {
 					from: {
